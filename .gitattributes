@@ -1,0 +1,21 @@
+# Este arquivo define como o Git deve lidar com os fins de linha (EOL) e outros atributos dos arquivos.
+# Ele garante que, mesmo trabalhando no Windows, arquivos Python e de configuração
+# mantenham o padrão Unix (LF), o que é essencial para rodar em containers Docker/Linux.
+
+# Comportamento padrão para detectar arquivos de texto automaticamente
+* text=auto
+
+# Forçar arquivos Python para sempre usar LF (Unix style)
+*.py text eol=lf
+
+# Forçar arquivos de configuração e shell scripts para LF
+*.sh text eol=lf
+*.toml text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+.python-version text eol=lf
+Dockerfile text eol=lf
+docker-compose.yml text eol=lf
+
+# Arquivos de documentação
+*.md text eol=lf
