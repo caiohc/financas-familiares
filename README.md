@@ -11,3 +11,4 @@ Acesse o diretório `/docs` para mergulhar nos pormenores do projeto. Todo hist�
 
 - 📖 **[Requisitos Funcionais](docs/requisitos_funcionais.md)** - Funcionalidades da aplicação disponibilizadas para os usuários.
 - ⚙️ **[Requisitos Não Funcionais](docs/requisitos_nao_funcionais.md)** - Necessidades, restrições técnicas e descrição da arquitetura do projeto.
+- 📋 **[Plano de Implementação](docs/plano_implementacao.md)** - O cronograma técnico evolutivo (Fases 1 a 5) das implementações do projeto.

@@ -20,6 +20,10 @@ Requisitos relacionados ao comportamento do sistema, restrições tecnológicas,
 - **Banco de Dados:** Utilização de SQLite em desenvolvimento local e PostgreSQL em produção (via Docker).
 - **Flexibilidade Híbrida de IA:** Ao lidar com OCR e classificação, a aplicação pode requisitar APIs na Nuvem ou integrar modelos pequenos locais, sendo uma configuração flexível.
 
-## 5. Gestão e Controle de Mudanças
+## 5. Segurança
+- **Proteção de Dados:** Senhas nunca devem ser armazenadas em texto plano. Deve-se utilizar algoritmos de hashing seguros (como Argon2 ou Bcrypt).
+- **Autenticação:** O sistema deve suportar autenticação baseada em tokens (como JWT) para comunicações entre cliente e servidor na fase de API.
+
+## 6. Gestão e Controle de Mudanças
 - **Controle de Versão:** Uso exclusivo de *Git* para código e gerenciamento de tarefas.
 - **Documentação:** Manutenção evolutiva contínua de um sistema base de documentos em diretório interno (`/docs`).
