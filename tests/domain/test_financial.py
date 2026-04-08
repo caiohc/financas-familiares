@@ -44,7 +44,8 @@ def test_credit_card_hierarchy():
         family_id=family_id,
         holder_id=padre_id,
         name="Cartão Infinite",
-        limit=10000.00
+        limit=10000.00,
+        due_day=5
     )
     
     # O plástico com o nome do filho atrelado logicamente ao contrato mãe

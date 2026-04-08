@@ -30,7 +30,7 @@ Foco: *Classes, Tipagem, Regras Limpas*. Sem bibliotecas web ou banco real.
 - [ ] Inicializar o projeto com `uv`.
 - [ ] Segregar o domínio de aplicação usando princípios *Domain-Driven Design* (Subpacotes).
 - [ ] Construir Subdomínio `identity`: entidade `User` focada em segurança.
-- [ ] Construir Subdomínio `financial`: conterá as regras core como `Family`, `Member` (Identidade Financeira), `BankAccount`, `CreditCard`, `CardInstance`, `Income`, `Transaction` e `Category`.
+- [x] Construir Subdomínio `financial`: conterá as regras core como `Family`, `Member` (Identidade Financeira), `BankAccount`, `CreditCard`, `CardInstance`, `Transaction` e `Category`.
 - [ ] Implementar a regra de multiplicidade: Um Membro pode possuir N Usuários.
 - [ ] Modelar a hierarquia de cartões e o vínculo obrigatório de titularidade.
 

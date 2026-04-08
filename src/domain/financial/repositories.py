@@ -1,6 +1,6 @@
 import uuid
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Optional, List
 
 from domain.financial.entities import (
     BankAccount,
@@ -8,7 +8,6 @@ from domain.financial.entities import (
     Category,
     CreditCard,
     Family,
-    Income,
     Member,
     Transaction,
 )

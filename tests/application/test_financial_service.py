@@ -42,7 +42,8 @@ def test_financial_service_crud_flux():
         family_id=titular_valido.family_id, 
         holder_id=titular_valido.id, 
         name="Infinite Black Família", 
-        limit=25000.0
+        limit=25000.0,
+        due_day=10
     )
     card_master = service.create_credit_card(cc_dto)
     assert card_master.limit == 25000.0

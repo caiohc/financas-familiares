@@ -15,6 +15,7 @@ class CreateCreditCardDTO:
     holder_id: uuid.UUID
     name: str
     limit: float
+    due_day: int
 
 @dataclass(kw_only=True)
 class CreateCardInstanceDTO:

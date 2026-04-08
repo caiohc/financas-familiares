@@ -19,6 +19,16 @@ class Family:
     """Escopo máximo do controle multi-tenant."""
     id: uuid.UUID = field(default_factory=uuid.uuid4)
     name: str
+    current_balance: float = 0.0
+
+    def process_transaction(self, transaction: 'Transaction'):
+        """Domínio Rico: O próprio objeto atualiza seu saldo cumulativo interpretando a Transação."""
+        if (transaction.is_realized and transaction.family_id == self.id
+                and not transaction.ignore_in_family_balance):
+            if transaction.type == TransactionType.INCOME:
+                self.current_balance += transaction.amount
+            elif transaction.type == TransactionType.EXPENSE:
+                self.current_balance -= transaction.amount
 
 
 @dataclass(kw_only=True)
@@ -44,6 +54,15 @@ class BankAccount:
     family_id: uuid.UUID
     holder_id: uuid.UUID  # Obrigatório apontar para a entidade Member
     name: str  # Ex: "Conta Corrente Itaú"
+    current_balance: float = 0.0
+
+    def process_transaction(self, transaction: 'Transaction'):
+        """Calcula o impacto da transação bancária apenas se ela tiver sido efetivada e pertencer a esta conta."""
+        if transaction.is_realized and transaction.bank_account_id == self.id:
+            if transaction.type == TransactionType.INCOME:
+                self.current_balance += transaction.amount
+            elif transaction.type == TransactionType.EXPENSE:
+                self.current_balance -= transaction.amount
 
 
 @dataclass(kw_only=True)
@@ -54,6 +73,7 @@ class CreditCard:
     holder_id: uuid.UUID  # Quem é o responsável legal do cartão (Member)
     name: str  
     limit: float
+    due_day: int  # Dia do mês estipulado para o vencimento da fatura (1 a 31)
 
 
 @dataclass(kw_only=True)
@@ -65,15 +85,6 @@ class CardInstance:
     nickname: str  
 
 
-@dataclass(kw_only=True)
-class Income:
-    """Controle de entradas mensais esperadas de dinheiro."""
-    id: uuid.UUID = field(default_factory=uuid.uuid4)
-    family_id: uuid.UUID
-    name: str  
-    expected_amount: float
-    holder_id: Optional[uuid.UUID] = None  # Se None, pertence à família genericamente
-
 
 @dataclass(kw_only=True)
 class Transaction:
@@ -82,11 +93,15 @@ class Transaction:
     family_id: uuid.UUID
     category_id: uuid.UUID
     type: TransactionType
-    date: date
+    date: date  # Data do fluxo  caixa efetivo (quando o dinheiro sai da conta ou a data de vencimento da fatura do cartão)
     amount: float
     description: str
+    is_realized: bool = None  # Define se o fluxo realmente acorreu no banco ou se é previsão pendente
+    ignore_in_family_balance: bool = False  # Evita a dupla contabilização (Ex: pagamento da fatura do cartão)
 
-    # Um dos 3 deve ser preenchido (ou todos None para Dinheiro Físico/Caixa):
+    # Campos opcionais de rastreabilidade do instrumento financeiro:
     bank_account_id: Optional[uuid.UUID] = None
     card_instance_id: Optional[uuid.UUID] = None
-    income_id: Optional[uuid.UUID] = None  # Pertinente apenas se for uma Transação vinculada a Income
+    
+    # Exclusivo para operações de crédito (O dia exato em que o plástico foi passado na maquininha):
+    operation_date: Optional[date] = None

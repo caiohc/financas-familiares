@@ -57,7 +57,8 @@ class FinancialService:
             family_id=dto.family_id,
             holder_id=dto.holder_id,
             name=dto.name,
-            limit=dto.limit
+            limit=dto.limit,
+            due_day=dto.due_day
         )
         self._credit_card_repo.save(card)
         return card
