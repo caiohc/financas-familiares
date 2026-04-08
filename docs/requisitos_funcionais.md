@@ -11,16 +11,17 @@ Abaixo estão descritos os requisitos de negócios e as funcionalidades que a ap
 - A aplicação deve realizar a contabilização (importação e processamento) de todas as transações contidas nos extratos importados.
 
 ## 3. Classificação Automática e Inteligência Artificial
-- A aplicação deve classificar as transações listadas nos extratos por categorias de receita e despesa.
+- A aplicação deve classificar as transações listadas nos extratos por categorias de receita e despesa. As taxonomias das **Categorias** (ex: Alimentação, Transporte) são globais e uniformes em toda a plataforma para todas as famílias.
 - A aplicação poderá utilizar tecnologias de Inteligência Artificial para realizar o mapeamento e classificação das despesas.
 - Se o documento importado for um PDF contendo imagens/escaneado, a aplicação integrará serviços de IA com capacidade de Visão Computacional / OCR para extrair digitalmente as despesas ali contidas.
 
 ## 5. Estrutura Organizacional e Multi-família
 - A aplicação deve suportar **múltiplas famílias**, funcionando de forma isolada (multi-tenant). Os dados de uma família não se misturam com os de outra.
 - Cada família pode possuir **múltiplos membros**.
-- Um membro é um usuário individual da plataforma que pertence obrigatoriamente a exatamente uma única família.
-- O controle financeiro (transações, receitas, despesas, orçamentos e relatórios) é realizado em nível de família. 
-- Cada membro de uma família tem acesso aos dados consolidados da sua respectiva família através de suas próprias credenciais de usuário.
+- A aplicação diferencia o contexto de acesso do contexto financeiro: **Usuário** é a entidade do sistema utilizada estritamente para autenticação e autorização (gestão de credenciais). **Membro** é a entidade de domínio que compõe a família.
+- Cada Membro pertence obrigatoriamente a uma única Família e é vinculado a um único Usuário do sistema.
+- O controle financeiro (transações, receitas, despesas, orçamentos e relatórios) é realizado em nível de Família e manipulado de acordo com a visão dos seus Membros. 
+- Cada Membro tem acesso aos dados consolidados de sua respectiva família provando sua identidade no sistema por meio de seu Usuário.
 
 ## 6. Instrumentos Financeiros e Orçamento
 ### Contas e Cartões

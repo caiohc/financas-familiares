@@ -25,15 +25,14 @@ A aplicação será divida em camadas independentes.
 
 ## Roteiro de Desenvolvimento (Roadmap)
 
-### Fase 1: Setup e o Núcleo do Domínio 
+### Fase 1: Setup e o Núcleo do Domínio (Bounded Contexts)
 Foco: *Classes, Tipagem, Regras Limpas*. Sem bibliotecas web ou banco real.
 - [ ] Inicializar o projeto com `uv`.
-- [ ] Construir as entidades centrais: `Familia`, `Usuario`, `ContaBancaria`, `CartaoCredito`, `InstanciaCartao`, `Receita`, `Transacao` e `Categoria`.
+- [ ] Segregar o domínio de aplicação usando princípios *Domain-Driven Design* (Subpacotes).
+- [ ] Construir Subdomínio `identity`: entidade `User` focada em segurança.
+- [ ] Construir Subdomínio `financial`: conterá as regras core como `Family`, `Member` (Identidade Financeira), `BankAccount`, `CreditCard`, `CardInstance`, `Income`, `Transaction` e `Category`.
+- [ ] Implementar a regra de multiplicidade: Um Membro pode possuir N Usuários.
 - [ ] Modelar a hierarquia de cartões e o vínculo obrigatório de titularidade.
-- [ ] Implementar o controle de "Dinheiro em Espécie" (Caixa da Família).
-- [ ] Construir casos de uso básicos: cadastro de membros, contas e registro de transação.
-- [ ] Gravar os dados em memória usando o `Repository Pattern`.
-- [ ] Cobrir com testes unitários usando `pytest`.
 
 ### Fase 2: Importação Múltipla (Motor de Extratos)
 Foco: *Strategy Pattern e Parsing de Documentos.*

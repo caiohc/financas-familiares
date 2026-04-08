@@ -1,0 +1,31 @@
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Python compiled / caches
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Editor / SO
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Logs & Databases
+logs/
+*.log
+*.sqlite
+*.sqlite3
+*.db
+
+# Misc e Package managers
+.uv/
+.ruff_cache/

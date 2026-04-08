@@ -5,3 +5,14 @@ description = "Aplicação para controle financeiro familiar"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = []
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "src",
+  "tests"
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+]
