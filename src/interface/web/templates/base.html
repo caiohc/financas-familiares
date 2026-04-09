@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Painel Administrativo{% endblock %} - Finanças V1</title>
+    <!-- CSS Nativo Injetado: Elegância em Tema Escuro (Rich Dark Mode UI) -->
+    <style>
+        :root {
+            /* Cores de Fundo Absolutas e Vidros (Glassmorphism) */
+            --bg-color: #0d1117; 
+            --panel-bg: #161b22; 
+            --glass-border: rgba(255, 255, 255, 0.08);
+            
+            /* Textos e Destaques */
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent-glow: #2f81f7;
+            --success-color: #238636;
+            --danger-color: #da3633;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            line-height: 1.5;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Menu Lateral (Sidebar) */
+        .sidebar {
+            width: 280px;
+            background-color: var(--panel-bg);
+            border-right: 1px solid var(--glass-border);
+            padding: 2rem 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .sidebar-brand {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        .nav-links {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text-secondary);
+            font-weight: 500;
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            transition: all 0.2s ease-in-out;
+            display: block;
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            background-color: rgba(47, 129, 247, 0.1);
+            color: var(--accent-glow);
+        }
+
+        /* Estrutura Principal */
+        .main-content {
+            flex-grow: 1;
+            padding: 3rem 4rem;
+            overflow-y: auto;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .page-header h1 {
+            font-size: 2rem;
+            font-weight: 600;
+        }
+
+        /* Botões Globais */
+        .btn {
+            background-color: var(--accent-glow);
+            color: white;
+            border: none;
+            padding: 0.6rem 1.2rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.2s;
+            text-decoration: none;
+        }
+        
+        .btn:hover {
+            box-shadow: 0 0 15px rgba(47, 129, 247, 0.4);
+            filter: brightness(1.1);
+        }
+
+        .btn-success {
+            background-color: var(--success-color);
+        }
+
+        /* Containers e Cards como vidro opaco */
+        .card {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    
+    <!-- Painel de Gerenciamento à Esquerda -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            Backoffice Fin
+        </div>
+        <ul class="nav-links">
+            <li><a href="/">Dashboard Geral</a></li>
+            <li><a href="#">Gerenciar Famílias</a></li>
+            <li><a href="#">Composição/Membros</a></li>
+            <li><a href="#">Contas e Cartões</a></li>
+            <li><a href="#">Auditoria de Transações</a></li>
+        </ul>
+    </aside>
+
+    <!-- Ponto Mágico onde o Jinja Re-renderiza o Centro -->
+    <main class="main-content">
+        {% block content %}
+        {% endblock %}
+    </main>
+
+</body>
+</html>

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Central{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Visão Geral do Core</h1>
+    <a href="#" class="btn btn-success">+ Nova Entrada de Dados</a>
+</div>
+
+<div class="card">
+    <h2 style="margin-bottom: 1rem; color: var(--text-secondary);">Sistema Rodando com Base Fake Ativa (Em Memória)</h2>
+    <p style="font-size: 1.1rem; margin-bottom: 2rem;">
+        Famílias criadas e sob orquestração de Domínio Rico hoje: <strong style="color: var(--accent-glow); font-size: 1.5rem;">{{ total_families }}</strong>
+    </p>
+
+    <p style="color: var(--text-secondary);">
+        -> Através do menu esquerdo nós forçaremos a execução das lógicas de Bitemporalidade e Bloqueio de Segurança que criamos sob a <b>Aplication Layer</b> nos dias passados em formulários reais!
+    </p>
+</div>
+{% endblock %}
