@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}{% if family %}Editar Família{% else %}Nova Família{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{% if family %}Reformular Identidade{% else %}Integrar Nova Família{% endif %}</h1>
+    <a href="{{ url_for('family.index') }}" class="btn" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary);">Voltar à Listagem</a>
+</div>
+
+<div class="card" style="max-width: 600px; margin: 0 auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+    <form method="POST">
+        <div style="margin-bottom: 2rem;">
+            <label for="name" style="display: block; margin-bottom: 0.8rem; color: var(--text-secondary); font-weight: 500; font-size: 0.95rem;">Assinatura Oficial / Sobrenome Base</label>
+            <input type="text" id="name" name="name" 
+                   value="{% if family %}{{ family.name }}{% endif %}" 
+                   placeholder="Ex: Família Silva"
+                   required
+                   autocomplete="off"
+                   style="width: 100%; padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border); 
+                          background-color: rgba(0,0,0,0.3); color: var(--text-primary); font-size: 1.1rem;
+                          outline: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); transition: border-color 0.2s;">
+        </div>
+        
+        <div style="display: flex; gap: 1rem; justify-content: flex-end; padding-top: 1rem; border-top: 1px solid var(--glass-border);">
+            <button type="submit" class="btn btn-success" style="padding: 0.8rem 2rem; font-size: 1rem;">
+                {% if family %}Salvar Configuração{% else %}Formalizar Cadastro{% endif %}
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Lógica visual exclusiva desse form para foco (glow) no input -->
+<script>
+    const input = document.getElementById('name');
+    input.addEventListener('focus', () => input.style.borderColor = 'var(--accent-glow)');
+    input.addEventListener('blur', () => input.style.borderColor = 'var(--glass-border)');
+</script>
+{% endblock %}

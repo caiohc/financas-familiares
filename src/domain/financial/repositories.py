@@ -7,6 +7,7 @@ from domain.financial.entities import (
     CardInstance,
     Category,
     CreditCard,
+    CreditCardBill,
     Family,
     Member,
     Transaction,
@@ -23,6 +24,10 @@ class FamilyRepository(ABC):
     def get_by_id(self, family_id: uuid.UUID) -> Optional[Family]:
         pass
 
+    @abstractmethod
+    def list_all(self) -> list[Family]:
+        pass
+
 
 class MemberRepository(ABC):
     """Interface para gerenciar Membros. O contexto financeiro dita as buscas atreladas à Família."""
@@ -36,6 +41,10 @@ class MemberRepository(ABC):
 
     @abstractmethod
     def list_by_family(self, family_id: uuid.UUID) -> list[Member]:
+        pass
+
+    @abstractmethod
+    def list_all(self) -> list[Member]:
         pass
 
 
@@ -106,4 +115,18 @@ class TransactionRepository(ABC):
 
     @abstractmethod
     def list_by_credit_card_instance(self, card_instance_id: uuid.UUID) -> list[Transaction]:
+        pass
+
+
+class CreditCardBillRepository(ABC):
+    @abstractmethod
+    def save(self, bill: CreditCardBill) -> None:
+        pass
+
+    @abstractmethod
+    def get_by_id(self, bill_id: uuid.UUID) -> Optional[CreditCardBill]:
+        pass
+    
+    @abstractmethod
+    def get_by_card_and_month(self, card_id: uuid.UUID, reference_month: str) -> Optional[CreditCardBill]:
         pass

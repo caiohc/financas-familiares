@@ -7,7 +7,8 @@ from application.dtos.financial_dtos import (
 from application.services.financial_service import FinancialService
 from domain.financial.entities import Member
 from infrastructure.repositories.in_memory import (
-    BankAccountMemoryRepository, CreditCardMemoryRepository, MemberMemoryRepository
+    BankAccountMemoryRepository, CreditCardMemoryRepository, MemberMemoryRepository,
+    TransactionMemoryRepository, CreditCardBillMemoryRepository
 )
 
 def test_financial_service_crud_flux():
@@ -24,7 +25,9 @@ def test_financial_service_crud_flux():
     service = FinancialService(
         bank_account_repo=db_accounts,
         credit_card_repo=db_cards,
-        member_repo=db_members
+        member_repo=db_members,
+        transaction_repo=TransactionMemoryRepository(),
+        credit_card_bill_repo=CreditCardBillMemoryRepository()
     )
     
     # 2. ACT -> Criação da Conta Bancária
@@ -69,7 +72,9 @@ def test_financial_service_blocks_cross_family_intruders():
     service = FinancialService(
         bank_account_repo=BankAccountMemoryRepository(),
         credit_card_repo=CreditCardMemoryRepository(),
-        member_repo=db_members
+        member_repo=db_members,
+        transaction_repo=TransactionMemoryRepository(),
+        credit_card_bill_repo=CreditCardBillMemoryRepository()
     )
     
     # O Titular é nativo da Family "oficial"

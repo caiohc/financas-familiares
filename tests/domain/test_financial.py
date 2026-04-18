@@ -36,24 +36,24 @@ def test_credit_card_hierarchy():
     family_id = uuid.uuid4()
     
     # Os membros
-    padre_id = uuid.uuid4()
-    filho_id = uuid.uuid4()
+    father_id = uuid.uuid4()
+    son_id = uuid.uuid4()
     
     # O cartão mãe, contrato em nome do pai
     master_card = CreditCard(
         family_id=family_id,
-        holder_id=padre_id,
+        holder_id=father_id,
         name="Cartão Infinite",
         limit=10000.00,
         due_day=5
     )
     
     # O plástico com o nome do filho atrelado logicamente ao contrato mãe
-    instance_filho = CardInstance(
+    instance_son = CardInstance(
         credit_card_id=master_card.id,
-        holder_id=filho_id,
+        holder_id=son_id,
         nickname="Cartão da Mesada"
     )
     
-    assert master_card.holder_id != instance_filho.holder_id
-    assert instance_filho.credit_card_id == master_card.id
+    assert master_card.holder_id != instance_son.holder_id
+    assert instance_son.credit_card_id == master_card.id

@@ -29,6 +29,15 @@ class FamilyService:
             raise ValueError(f"Família {family_id} não está registrada no ecossistema.")
         return family
 
+    def list_families(self) -> list[Family]:
+        return self._family_repo.list_all()
+
+    def update_family(self, family_id: uuid.UUID, new_name: str) -> Family:
+        family = self.get_family(family_id)
+        family.name = new_name
+        self._family_repo.save(family)
+        return family
+
     def create_member(self, dto: CreateMemberDTO) -> Member:
         # Validação: Garante que não teremos um membro perdido sem família
         self.get_family(dto.family_id)
@@ -40,3 +49,23 @@ class FamilyService:
     def list_members(self, family_id: uuid.UUID) -> list[Member]:
         self.get_family(family_id)  # Se ela não existir, interrompe o fluxo automaticamente.
         return self._member_repo.list_by_family(family_id)
+
+    def get_member(self, member_id: uuid.UUID) -> Member:
+        member = self._member_repo.get_by_id(member_id)
+        if not member:
+            raise ValueError(f"Membro {member_id} não encontrado.")
+        return member
+
+    def list_all_members(self) -> list[Member]:
+        return self._member_repo.list_all()
+
+    def update_member(self, member_id: uuid.UUID, new_name: str, new_family_id: uuid.UUID) -> Member:
+        # Confere se os dois ecossistemas existem
+        member = self.get_member(member_id)
+        self.get_family(new_family_id)
+        
+        member.name = new_name
+        member.family_id = new_family_id
+        
+        self._member_repo.save(member)
+        return member

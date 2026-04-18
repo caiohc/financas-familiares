@@ -2,11 +2,11 @@ import uuid
 from typing import Optional
 
 from domain.financial.entities import (
-    BankAccount, CardInstance, CreditCard, Family, Member, Transaction
+    BankAccount, CardInstance, CreditCard, Family, Member, Transaction, CreditCardBill
 )
 from domain.financial.repositories import (
     BankAccountRepository, CreditCardRepository, FamilyRepository, 
-    MemberRepository, TransactionRepository
+    MemberRepository, TransactionRepository, CreditCardBillRepository
 )
 
 
@@ -21,6 +21,9 @@ class FamilyMemoryRepository(FamilyRepository):
     def get_by_id(self, family_id: uuid.UUID) -> Optional[Family]:
         return self._data.get(family_id, None)
 
+    def list_all(self) -> list[Family]:
+        return list(self._data.values())
+
 
 class MemberMemoryRepository(MemberRepository):
     def __init__(self):
@@ -34,6 +37,9 @@ class MemberMemoryRepository(MemberRepository):
 
     def list_by_family(self, family_id: uuid.UUID) -> list[Member]:
         return [m for m in self._data.values() if m.family_id == family_id]
+
+    def list_all(self) -> list[Member]:
+        return list(self._data.values())
 
 
 class BankAccountMemoryRepository(BankAccountRepository):
@@ -86,3 +92,20 @@ class TransactionMemoryRepository(TransactionRepository):
         
     def list_by_credit_card_instance(self, card_instance_id: uuid.UUID) -> list[Transaction]:
         return [t for t in self._data.values() if t.card_instance_id == card_instance_id]
+
+
+class CreditCardBillMemoryRepository(CreditCardBillRepository):
+    def __init__(self):
+        self._data: dict[uuid.UUID, CreditCardBill] = {}
+
+    def save(self, bill: CreditCardBill) -> None:
+        self._data[bill.id] = bill
+
+    def get_by_id(self, bill_id: uuid.UUID) -> Optional[CreditCardBill]:
+        return self._data.get(bill_id)
+
+    def get_by_card_and_month(self, card_id: uuid.UUID, reference_month: str) -> Optional[CreditCardBill]:
+        for b in self._data.values():
+            if b.credit_card_id == card_id and b.reference_month == reference_month:
+                return b
+        return None

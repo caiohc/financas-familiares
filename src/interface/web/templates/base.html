@@ -140,8 +140,8 @@
         </div>
         <ul class="nav-links">
             <li><a href="/">Dashboard Geral</a></li>
-            <li><a href="#">Gerenciar Famílias</a></li>
-            <li><a href="#">Composição/Membros</a></li>
+            <li><a href="{{ url_for('family.index') }}">Gerenciar Famílias</a></li>
+            <li><a href="{{ url_for('member.index') }}">Composição/Membros</a></li>
             <li><a href="#">Contas e Cartões</a></li>
             <li><a href="#">Auditoria de Transações</a></li>
         </ul>

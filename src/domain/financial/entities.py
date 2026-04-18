@@ -77,6 +77,25 @@ class CreditCard:
 
 
 @dataclass(kw_only=True)
+class CreditCardBill:
+    """A Fatura de fechamento de um contrato/cartão."""
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
+    credit_card_id: uuid.UUID
+    reference_month: str  # Formato YYYY-MM (Ex: 2026-04)
+    due_date: date  # Dia exato do vencimento nesse mês específico
+    is_closed: bool = False
+    total_amount: float = 0.0
+
+    def process_transaction(self, transaction: 'Transaction'):
+        """Engloba despensas e estornos no domínio matemático da fatura."""
+        if transaction.credit_card_bill_id == self.id:
+            if transaction.type == TransactionType.EXPENSE:
+                self.total_amount += transaction.amount
+            elif transaction.type == TransactionType.INCOME:
+                self.total_amount -= transaction.amount
+
+
+@dataclass(kw_only=True)
 class CardInstance:
     """Plásticos ou Cartões virtuais emitidos a partir de um CreditCard."""
     id: uuid.UUID = field(default_factory=uuid.uuid4)
@@ -102,6 +121,8 @@ class Transaction:
     # Campos opcionais de rastreabilidade do instrumento financeiro:
     bank_account_id: Optional[uuid.UUID] = None
     card_instance_id: Optional[uuid.UUID] = None
+    credit_card_bill_id: Optional[uuid.UUID] = None
     
-    # Exclusivo para operações de crédito (O dia exato em que o plástico foi passado na maquininha):
-    operation_date: Optional[date] = None
+    # Controle matemático de parcelas
+    installment_current: int = 1
+    installment_total: int = 1
