@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Cartões de Crédito{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Cartões de Crédito</h1>
+    <div style="display: flex; gap: 1rem;">
+        <a href="{{ url_for('credit_card.create') }}" class="btn btn-success">+ Adicionar Cartão Principal</a>
+        <a href="{{ url_for('credit_card.create_instance') }}" class="btn" style="background-color: var(--glass-bg); color: var(--text-primary); border: 1px solid var(--glass-border);">+ Adicionar Plástico (Adicional)</a>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr; gap: 2rem;">
+    <!-- Cartões Principais -->
+    <div class="card" style="padding: 0; overflow: hidden;">
+        <div style="padding: 1.5rem; border-bottom: 1px solid var(--glass-border); background: rgba(255,255,255,0.02);">
+            <h2 style="margin: 0; font-size: 1.2rem; color: var(--text-primary);">Cartões Principais (Master)</h2>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+                <tr style="background-color: rgba(255, 255, 255, 0.05); border-bottom: 1px solid var(--glass-border);">
+                    <th style="padding: 1rem 1.5rem; color: var(--text-secondary); font-weight: 500;">Nome do Cartão</th>
+                    <th style="padding: 1rem 1.5rem; color: var(--text-secondary); font-weight: 500;">Família</th>
+                    <th style="padding: 1rem 1.5rem; color: var(--text-secondary); font-weight: 500;">Titular (Legal)</th>
+                    <th style="padding: 1rem 1.5rem; color: var(--text-secondary); font-weight: 500;">Limite</th>
+                    <th style="padding: 1rem 1.5rem; color: var(--text-secondary); font-weight: 500;">Vencimento</th>
+                    <th style="padding: 1rem 1.5rem; color: var(--text-secondary); font-weight: 500; text-align: right;">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in cards %}
+                <tr style="border-bottom: 1px solid var(--glass-border); transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='rgba(255,255,255,0.02)'" onmouseout="this.style.backgroundColor='transparent'">
+                    <td style="padding: 1rem 1.5rem; font-weight: 600; color: var(--text-primary);">{{ c.name }}</td>
+                    <td style="padding: 1rem 1.5rem; color: var(--accent-glow); font-weight: 500;">{{ families.get(c.family_id, 'Desconhecida') }}</td>
+                    <td style="padding: 1rem 1.5rem; color: var(--text-secondary); font-weight: 500;">{{ members.get(c.holder_id, 'Desconhecido') }}</td>
+                    <td style="padding: 1rem 1.5rem; font-weight: 600; color: var(--success-color);">R$ {{ "%.2f"|format(c.limit) }}</td>
+                    <td style="padding: 1rem 1.5rem; color: var(--text-secondary);">Dia {{ c.due_day }}</td>
+                    <td style="padding: 1rem 1.5rem; text-align: right;">
+                        <a href="{{ url_for('credit_card.update', card_id=c.id) }}" class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background-color: rgba(47, 129, 247, 0.2); color: var(--accent-glow);">✏️ Editar</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" style="padding: 3rem; text-align: center; color: var(--text-secondary);">Nenhum cartão principal cadastrado.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Plásticos / Adicionais -->
+    <div class="card" style="padding: 0; overflow: hidden;">
+        <div style="padding: 1.5rem; border-bottom: 1px solid var(--glass-border); background: rgba(255,255,255,0.02);">
+            <h2 style="margin: 0; font-size: 1.2rem; color: var(--text-primary);">Instâncias de Cartões (Plásticos)</h2>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; text-align: left;">
+            <thead>
+                <tr style="background-color: rgba(255, 255, 255, 0.05); border-bottom: 1px solid var(--glass-border);">
+                    <th style="padding: 1rem 1.5rem; color: var(--text-secondary); font-weight: 500;">Apelido</th>
+                    <th style="padding: 1rem 1.5rem; color: var(--text-secondary); font-weight: 500;">Cartão Principal</th>
+                    <th style="padding: 1rem 1.5rem; color: var(--text-secondary); font-weight: 500;">Portador (Usuário)</th>
+                    <th style="padding: 1rem 1.5rem; color: var(--text-secondary); font-weight: 500; text-align: right;">Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in instances %}
+                <tr style="border-bottom: 1px solid var(--glass-border); transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='rgba(255,255,255,0.02)'" onmouseout="this.style.backgroundColor='transparent'">
+                    <td style="padding: 1rem 1.5rem; font-weight: 600; color: var(--text-primary);">{{ i.nickname }}</td>
+                    <td style="padding: 1rem 1.5rem; color: var(--accent-glow); font-weight: 500;">{{ cards_dict.get(i.credit_card_id, 'Desconhecido') }}</td>
+                    <td style="padding: 1rem 1.5rem; color: var(--text-secondary); font-weight: 500;">{{ members.get(i.holder_id, 'Desconhecido') }}</td>
+                    <td style="padding: 1rem 1.5rem; text-align: right;">
+                        <a href="{{ url_for('credit_card.update_instance', instance_id=i.id) }}" class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background-color: rgba(47, 129, 247, 0.2); color: var(--accent-glow);">✏️ Editar</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" style="padding: 3rem; text-align: center; color: var(--text-secondary);">Nenhum plástico cadastrado.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

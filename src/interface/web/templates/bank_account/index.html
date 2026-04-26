@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Contas Bancárias{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Contas Bancárias</h1>
+    <a href="{{ url_for('bank_account.create') }}" class="btn btn-success">+ Adicionar Conta</a>
+</div>
+
+<div class="card" style="padding: 0; overflow: hidden;">
+    <table style="width: 100%; border-collapse: collapse; text-align: left;">
+        <thead>
+            <tr style="background-color: rgba(255, 255, 255, 0.05); border-bottom: 1px solid var(--glass-border);">
+                <th style="padding: 1rem 1.5rem; color: var(--text-secondary); font-weight: 500;">#</th>
+                <th style="padding: 1rem 1.5rem; color: var(--text-secondary); font-weight: 500;">Nome da Conta</th>
+                <th style="padding: 1rem 1.5rem; color: var(--text-secondary); font-weight: 500;">Família</th>
+                <th style="padding: 1rem 1.5rem; color: var(--text-secondary); font-weight: 500;">Titular</th>
+                <th style="padding: 1rem 1.5rem; color: var(--text-secondary); font-weight: 500;">Saldo Atual</th>
+                <th style="padding: 1rem 1.5rem; color: var(--text-secondary); font-weight: 500; text-align: right;">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in accounts %}
+            <tr style="border-bottom: 1px solid var(--glass-border); transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='rgba(255,255,255,0.02)'" onmouseout="this.style.backgroundColor='transparent'">
+                <td style="padding: 1rem 1.5rem; color: var(--text-secondary); font-size: 0.95rem; font-weight: 500;">{{ loop.index }}</td>
+                <td style="padding: 1rem 1.5rem; font-weight: 600; color: var(--text-primary);">{{ a.name }}</td>
+                <td style="padding: 1rem 1.5rem; color: var(--accent-glow); font-weight: 500;">{{ families.get(a.family_id, 'Desconhecida') }}</td>
+                <td style="padding: 1rem 1.5rem; color: var(--text-secondary); font-weight: 500;">{{ members.get(a.holder_id, 'Desconhecido') }}</td>
+                <td style="padding: 1rem 1.5rem; font-weight: 600; color: {% if a.current_balance >= 0 %}var(--success-color){% else %}var(--danger-color){% endif %};">R$ {{ "%.2f"|format(a.current_balance) }}</td>
+                <td style="padding: 1rem 1.5rem; text-align: right;">
+                    <a href="{{ url_for('bank_account.update', account_id=a.id) }}" class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background-color: rgba(47, 129, 247, 0.2); color: var(--accent-glow);">✏️ Editar</a>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" style="padding: 3rem; text-align: center; color: var(--text-secondary);">O Sistema não possui contas bancárias cadastradas ainda.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

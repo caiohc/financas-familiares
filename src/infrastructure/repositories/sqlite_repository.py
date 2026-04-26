@@ -4,11 +4,13 @@ import datetime
 from typing import Optional, List
 
 from domain.financial.entities import (
-    BankAccount, CardInstance, CreditCard, Family, Member, Transaction, CreditCardBill
+    BankAccount, CardInstance, CreditCard, Family, Member, Transaction, CreditCardBill,
+    Category, TransactionType
 )
 from domain.financial.repositories import (
     BankAccountRepository, CreditCardRepository, FamilyRepository, 
-    MemberRepository, TransactionRepository, CreditCardBillRepository
+    MemberRepository, TransactionRepository, CreditCardBillRepository,
+    CategoryRepository
 )
 
 def get_connection(db_path: str):
@@ -89,6 +91,53 @@ class MemberSQLiteRepository(MemberRepository):
         return res
 
 
+class CategorySQLiteRepository(CategoryRepository):
+    def __init__(self, db_path: str):
+        self.db_path = db_path
+
+    def save(self, category: Category) -> None:
+        with get_connection(self.db_path) as conn:
+            conn.execute(
+                "INSERT INTO categories (id, name, type_str) VALUES (?, ?, ?) "
+                "ON CONFLICT(id) DO UPDATE SET name=excluded.name, type_str=excluded.type_str",
+                (str(category.id), category.name, category.type.value)
+            )
+
+    def get_by_id(self, category_id: uuid.UUID) -> Optional[Category]:
+        with get_connection(self.db_path) as conn:
+            row = conn.execute("SELECT * FROM categories WHERE id = ?", (str(category_id),)).fetchone()
+            if row:
+                c = Category(name=row['name'], type=TransactionType(row['type_str']))
+                c.id = uuid.UUID(row['id'])
+                return c
+        return None
+
+    def list_all(self) -> list[Category]:
+        with get_connection(self.db_path) as conn:
+            rows = conn.execute("SELECT * FROM categories").fetchall()
+            result = []
+            for r in rows:
+                c = Category(name=r['name'], type=TransactionType(r['type_str']))
+                c.id = uuid.UUID(r['id'])
+                result.append(c)
+            return result
+
+    def list_by_type(self, type_str: str) -> list[Category]:
+        with get_connection(self.db_path) as conn:
+            rows = conn.execute("SELECT * FROM categories WHERE type_str = ?", (type_str,)).fetchall()
+            result = []
+            for r in rows:
+                c = Category(name=r['name'], type=TransactionType(r['type_str']))
+                c.id = uuid.UUID(r['id'])
+                result.append(c)
+            return result
+
+    def delete(self, category_id: uuid.UUID) -> None:
+        with get_connection(self.db_path) as conn:
+            conn.execute("DELETE FROM categories WHERE id = ?", (str(category_id),))
+
+
+
 class BankAccountSQLiteRepository(BankAccountRepository):
     def __init__(self, db_path: str):
         self.db_path = db_path
@@ -100,7 +149,7 @@ class BankAccountSQLiteRepository(BankAccountRepository):
                 "VALUES (?, ?, ?, ?, ?, ?) "
                 "ON CONFLICT(id) DO UPDATE SET balance=excluded.balance",
                 (str(account.id), str(account.family_id), str(account.holder_id), account.name, 
-                 account.balance, int(account.ignores_consolidated_balance))
+                 account.current_balance, int(account.ignores_consolidated_balance))
             )
 
     def get_by_id(self, account_id: uuid.UUID) -> Optional[BankAccount]:
@@ -111,7 +160,7 @@ class BankAccountSQLiteRepository(BankAccountRepository):
                     family_id=uuid.UUID(row['family_id']), 
                     holder_id=uuid.UUID(row['holder_id']), 
                     name=row['name'], 
-                    balance=row['balance'], 
+                    current_balance=row['balance'], 
                     ignores_consolidated_balance=bool(row['ignores_consolidated_balance'])
                 )
                 b.id = uuid.UUID(row['id'])
@@ -127,7 +176,23 @@ class BankAccountSQLiteRepository(BankAccountRepository):
                     family_id=uuid.UUID(row['family_id']), 
                     holder_id=uuid.UUID(row['holder_id']), 
                     name=row['name'], 
-                    balance=row['balance'], 
+                    current_balance=row['balance'], 
+                    ignores_consolidated_balance=bool(row['ignores_consolidated_balance'])
+                )
+                b.id = uuid.UUID(row['id'])
+                res.append(b)
+            return res
+
+    def list_all(self) -> list[BankAccount]:
+        with get_connection(self.db_path) as conn:
+            rows = conn.execute("SELECT * FROM bank_accounts").fetchall()
+            res = []
+            for row in rows:
+                b = BankAccount(
+                    family_id=uuid.UUID(row['family_id']), 
+                    holder_id=uuid.UUID(row['holder_id']), 
+                    name=row['name'], 
+                    current_balance=row['balance'], 
                     ignores_consolidated_balance=bool(row['ignores_consolidated_balance'])
                 )
                 b.id = uuid.UUID(row['id'])
@@ -174,6 +239,64 @@ class CreditCardSQLiteRepository(CreditCardRepository):
                     nickname=r['nickname']
                 )
                 c.id = uuid.UUID(r['id'])
+                res.append(c)
+            return res
+
+    def get_by_id(self, credit_card_id: uuid.UUID) -> Optional[CreditCard]:
+        with get_connection(self.db_path) as conn:
+            row = conn.execute("SELECT * FROM credit_cards WHERE id = ?", (str(credit_card_id),)).fetchone()
+            if row:
+                c = CreditCard(
+                    family_id=uuid.UUID(row['family_id']),
+                    holder_id=uuid.UUID(row['holder_id']),
+                    name=row['name'],
+                    limit=row['limit_amount'],
+                    due_day=row['due_day']
+                )
+                c.id = uuid.UUID(row['id'])
+                return c
+        return None
+
+    def list_all(self) -> list[CreditCard]:
+        with get_connection(self.db_path) as conn:
+            rows = conn.execute("SELECT * FROM credit_cards").fetchall()
+            res = []
+            for row in rows:
+                c = CreditCard(
+                    family_id=uuid.UUID(row['family_id']),
+                    holder_id=uuid.UUID(row['holder_id']),
+                    name=row['name'],
+                    limit=row['limit_amount'],
+                    due_day=row['due_day']
+                )
+                c.id = uuid.UUID(row['id'])
+                res.append(c)
+            return res
+
+    def get_instance_by_id(self, instance_id: uuid.UUID) -> Optional[CardInstance]:
+        with get_connection(self.db_path) as conn:
+            row = conn.execute("SELECT * FROM card_instances WHERE id = ?", (str(instance_id),)).fetchone()
+            if row:
+                c = CardInstance(
+                    credit_card_id=uuid.UUID(row['credit_card_id']),
+                    holder_id=uuid.UUID(row['holder_id']),
+                    nickname=row['nickname']
+                )
+                c.id = uuid.UUID(row['id'])
+                return c
+        return None
+
+    def list_all_instances(self) -> list[CardInstance]:
+        with get_connection(self.db_path) as conn:
+            rows = conn.execute("SELECT * FROM card_instances").fetchall()
+            res = []
+            for row in rows:
+                c = CardInstance(
+                    credit_card_id=uuid.UUID(row['credit_card_id']),
+                    holder_id=uuid.UUID(row['holder_id']),
+                    nickname=row['nickname']
+                )
+                c.id = uuid.UUID(row['id'])
                 res.append(c)
             return res
 

@@ -1,21 +1,35 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard Central{% endblock %}
+{% block title %}Painel de Administração{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>Visão Geral do Core</h1>
-    <a href="#" class="btn btn-success">+ Nova Entrada de Dados</a>
+    <h1>Painel de Administração</h1>
 </div>
 
-<div class="card">
-    <h2 style="margin-bottom: 1rem; color: var(--text-secondary);">Sistema Rodando com Base Fake Ativa (Em Memória)</h2>
-    <p style="font-size: 1.1rem; margin-bottom: 2rem;">
-        Famílias criadas e sob orquestração de Domínio Rico hoje: <strong style="color: var(--accent-glow); font-size: 1.5rem;">{{ total_families }}</strong>
-    </p>
-
-    <p style="color: var(--text-secondary);">
-        -> Através do menu esquerdo nós forçaremos a execução das lógicas de Bitemporalidade e Bloqueio de Segurança que criamos sob a <b>Aplication Layer</b> nos dias passados em formulários reais!
-    </p>
+<div class="card" style="padding: 0; overflow: hidden;">
+    <div style="padding: 1.5rem; border-bottom: 1px solid var(--glass-border); background: rgba(255,255,255,0.02);">
+        <h2 style="margin: 0; font-size: 1.2rem; color: var(--text-primary);">Síntese de Registros no Sistema</h2>
+    </div>
+    <table style="width: 100%; border-collapse: collapse; text-align: left;">
+        <thead>
+            <tr style="background-color: rgba(255, 255, 255, 0.05); border-bottom: 1px solid var(--glass-border);">
+                <th style="padding: 1rem 1.5rem; color: var(--text-secondary); font-weight: 500;">Entidade de Domínio</th>
+                <th style="padding: 1rem 1.5rem; color: var(--text-secondary); font-weight: 500; text-align: right;">Quantidade Atual</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for name, qty in counts.items() %}
+            <tr style="border-bottom: 1px solid var(--glass-border); transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='rgba(255,255,255,0.02)'" onmouseout="this.style.backgroundColor='transparent'">
+                <td style="padding: 1rem 1.5rem; font-weight: 600; color: var(--text-primary);">{{ name }}</td>
+                <td style="padding: 1rem 1.5rem; font-weight: 600; color: var(--accent-glow); text-align: right; font-size: 1.1rem;">{{ qty }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="2" style="padding: 3rem; text-align: center; color: var(--text-secondary);">Erro ao processar as contagens ou banco de dados ainda sem dados.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 {% endblock %}

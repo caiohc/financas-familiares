@@ -77,6 +77,10 @@ class BankAccountRepository(ABC):
     def list_by_family(self, family_id: uuid.UUID) -> list[BankAccount]:
         pass
 
+    @abstractmethod
+    def list_all(self) -> list[BankAccount]:
+        pass
+
 
 class CreditCardRepository(ABC):
     """Contrato que rege a hierarquia do master card e das respectivas instâncias (plásticos)."""
@@ -92,6 +96,22 @@ class CreditCardRepository(ABC):
 
     @abstractmethod
     def list_instances_by_family(self, family_id: uuid.UUID) -> List[CardInstance]:
+        pass
+
+    @abstractmethod
+    def get_by_id(self, credit_card_id: uuid.UUID) -> Optional[CreditCard]:
+        pass
+
+    @abstractmethod
+    def list_all(self) -> list[CreditCard]:
+        pass
+
+    @abstractmethod
+    def list_all_instances(self) -> list[CardInstance]:
+        pass
+
+    @abstractmethod
+    def get_instance_by_id(self, instance_id: uuid.UUID) -> Optional[CardInstance]:
         pass
 
 

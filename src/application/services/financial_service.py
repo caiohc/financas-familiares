@@ -88,6 +88,53 @@ class FinancialService:
         self._credit_card_repo.save_instance(instance)
         return instance
 
+    def list_all_bank_accounts(self) -> list[BankAccount]:
+        return self._bank_account_repo.list_all()
+
+    def get_bank_account(self, account_id: uuid.UUID) -> BankAccount:
+        account = self._bank_account_repo.get_by_id(account_id)
+        if not account:
+            raise ValueError(f"Conta Bancária {account_id} não encontrada.")
+        return account
+
+    def update_bank_account(self, account_id: uuid.UUID, name: str) -> BankAccount:
+        account = self.get_bank_account(account_id)
+        account.name = name
+        self._bank_account_repo.save(account)
+        return account
+
+    def list_all_credit_cards(self) -> list[CreditCard]:
+        return self._credit_card_repo.list_all()
+
+    def get_credit_card(self, card_id: uuid.UUID) -> CreditCard:
+        card = self._credit_card_repo.get_by_id(card_id)
+        if not card:
+            raise ValueError(f"Cartão de Crédito {card_id} não encontrado.")
+        return card
+
+    def update_credit_card(self, card_id: uuid.UUID, name: str, limit: float, due_day: int) -> CreditCard:
+        card = self.get_credit_card(card_id)
+        card.name = name
+        card.limit = limit
+        card.due_day = due_day
+        self._credit_card_repo.save(card)
+        return card
+
+    def list_all_card_instances(self) -> list[CardInstance]:
+        return self._credit_card_repo.list_all_instances()
+
+    def get_card_instance(self, instance_id: uuid.UUID) -> CardInstance:
+        instance = self._credit_card_repo.get_instance_by_id(instance_id)
+        if not instance:
+            raise ValueError(f"Plástico {instance_id} não encontrado.")
+        return instance
+
+    def update_card_instance(self, instance_id: uuid.UUID, nickname: str) -> CardInstance:
+        instance = self.get_card_instance(instance_id)
+        instance.nickname = nickname
+        self._credit_card_repo.save_instance(instance)
+        return instance
+
     def create_credit_card_bill(self, dto: CreateCreditCardBillDTO) -> CreditCardBill:
         bill = CreditCardBill(
             credit_card_id=dto.credit_card_id,

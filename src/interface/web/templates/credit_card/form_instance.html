@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}{% if instance %}Editar Plástico{% else %}Novo Plástico{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{% if instance %}Editar Plástico: {{ instance.nickname }}{% else %}Novo Plástico (Adicional){% endif %}</h1>
+    <a href="{{ url_for('credit_card.index') }}" class="btn" style="background-color: var(--glass-bg); color: var(--text-primary); border: 1px solid var(--glass-border);">Voltar</a>
+</div>
+
+<div class="card" style="max-width: 600px; margin: 0 auto;">
+    {% if error %}
+    <div style="background-color: rgba(218, 54, 51, 0.1); border: 1px solid var(--danger-color); color: var(--danger-color); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; text-align: center; font-weight: 500;">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="POST">
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label for="nickname" style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Apelido do Cartão</label>
+            <input type="text" id="nickname" name="nickname" class="form-control" value="{{ instance.nickname if instance else '' }}" required placeholder="Ex: Cartão da Esposa, Cartão Virtual Ifood" style="width: 100%; padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border); background-color: rgba(0,0,0,0.3); color: var(--text-primary); font-size: 1.1rem; outline: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); transition: border-color 0.2s;">
+        </div>
+        
+        {% if not instance %}
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label for="credit_card_id" style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Cartão Principal (Master)</label>
+            <select id="credit_card_id" name="credit_card_id" class="form-control" required style="width: 100%; padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border); background-color: var(--bg-color); color: var(--text-primary); font-size: 1.1rem; outline: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); transition: border-color 0.2s; cursor: pointer;">
+                <option value="" disabled selected>Selecione o cartão principal</option>
+                {% for c in cards %}
+                <option value="{{ c.id }}">{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 2rem;">
+            <label for="holder_id" style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Portador (Usuário)</label>
+            <select id="holder_id" name="holder_id" class="form-control" required style="width: 100%; padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border); background-color: var(--bg-color); color: var(--text-primary); font-size: 1.1rem; outline: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); transition: border-color 0.2s; cursor: pointer;">
+                <option value="" disabled selected>Selecione quem irá usar este cartão</option>
+                {% for m in members %}
+                <option value="{{ m.id }}">{{ m.name }}</option>
+                {% endfor %}
+            </select>
+            <small style="color: var(--text-secondary); display: block; margin-top: 0.5rem;">O portador deve ser do mesmo grupo familiar do cartão.</small>
+        </div>
+        {% else %}
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Cartão Principal</label>
+            <select class="form-control" disabled style="width: 100%; padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border); background-color: var(--bg-color); color: var(--text-secondary); font-size: 1.1rem; outline: none; opacity: 0.7; cursor: not-allowed;">
+                {% for c in cards %}
+                <option value="{{ c.id }}" {% if c.id == instance.credit_card_id %}selected{% endif %}>{{ c.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 2rem;">
+            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Portador</label>
+            <select class="form-control" disabled style="width: 100%; padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border); background-color: var(--bg-color); color: var(--text-secondary); font-size: 1.1rem; outline: none; opacity: 0.7; cursor: not-allowed;">
+                {% for m in members %}
+                <option value="{{ m.id }}" {% if m.id == instance.holder_id %}selected{% endif %}>{{ m.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+
+        <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+            <button type="submit" class="btn btn-success" style="padding: 0.8rem 2rem; font-weight: 600;">{% if instance %}Salvar Alterações{% else %}Cadastrar Plástico{% endif %}</button>
+        </div>
+    </form>
+</div>
+<script>
+    const inputs = document.querySelectorAll('input, select');
+    inputs.forEach(el => {
+        el.addEventListener('focus', () => el.style.borderColor = 'var(--accent-glow)');
+        el.addEventListener('blur', () => el.style.borderColor = 'var(--glass-border)');
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}{% if card %}Editar Cartão{% else %}Novo Cartão de Crédito{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{% if card %}Editar Cartão: {{ card.name }}{% else %}Novo Cartão de Crédito{% endif %}</h1>
+    <a href="{{ url_for('credit_card.index') }}" class="btn" style="background-color: var(--glass-bg); color: var(--text-primary); border: 1px solid var(--glass-border);">Voltar</a>
+</div>
+
+<div class="card" style="max-width: 600px; margin: 0 auto;">
+    {% if error %}
+    <div style="background-color: rgba(218, 54, 51, 0.1); border: 1px solid var(--danger-color); color: var(--danger-color); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; text-align: center; font-weight: 500;">
+        {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="POST">
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label for="name" style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Nome do Cartão</label>
+            <input type="text" id="name" name="name" class="form-control" value="{{ card.name if card else '' }}" required placeholder="Ex: Cartão Nubank" style="width: 100%; padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border); background-color: rgba(0,0,0,0.3); color: var(--text-primary); font-size: 1.1rem; outline: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); transition: border-color 0.2s;">
+        </div>
+        
+        {% if not card %}
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label for="family_id" style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Família</label>
+            <select id="family_id" name="family_id" class="form-control" required style="width: 100%; padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border); background-color: var(--bg-color); color: var(--text-primary); font-size: 1.1rem; outline: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); transition: border-color 0.2s; cursor: pointer;">
+                <option value="" disabled selected>Selecione uma família</option>
+                {% for f in families %}
+                <option value="{{ f.id }}">{{ f.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 2rem;">
+            <label for="holder_id" style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Titular Legal (Membro)</label>
+            <select id="holder_id" name="holder_id" class="form-control" required style="width: 100%; padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border); background-color: var(--bg-color); color: var(--text-primary); font-size: 1.1rem; outline: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); transition: border-color 0.2s; cursor: pointer;">
+                <option value="" disabled selected>Selecione um titular</option>
+                {% for m in members %}
+                <option value="{{ m.id }}">{{ m.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% else %}
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Família</label>
+            <select class="form-control" disabled style="width: 100%; padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border); background-color: var(--bg-color); color: var(--text-secondary); font-size: 1.1rem; outline: none; opacity: 0.7; cursor: not-allowed;">
+                {% for f in families %}
+                <option value="{{ f.id }}" {% if f.id == card.family_id %}selected{% endif %}>{{ f.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="margin-bottom: 2rem;">
+            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Titular Legal</label>
+            <select class="form-control" disabled style="width: 100%; padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border); background-color: var(--bg-color); color: var(--text-secondary); font-size: 1.1rem; outline: none; opacity: 0.7; cursor: not-allowed;">
+                {% for m in members %}
+                <option value="{{ m.id }}" {% if m.id == card.holder_id %}selected{% endif %}>{{ m.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 2rem;">
+            <div class="form-group">
+                <label for="limit" style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Limite (R$)</label>
+                <input type="number" id="limit" name="limit" step="0.01" class="form-control" value="{{ "%.2f"|format(card.limit) if card else '' }}" required placeholder="0.00" style="width: 100%; padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border); background-color: rgba(0,0,0,0.3); color: var(--text-primary); font-size: 1.1rem; outline: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); transition: border-color 0.2s;">
+            </div>
+            <div class="form-group">
+                <label for="due_day" style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Dia de Vencimento</label>
+                <input type="number" id="due_day" name="due_day" min="1" max="31" class="form-control" value="{{ card.due_day if card else '' }}" required placeholder="Ex: 5" style="width: 100%; padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border); background-color: rgba(0,0,0,0.3); color: var(--text-primary); font-size: 1.1rem; outline: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); transition: border-color 0.2s;">
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+            <button type="submit" class="btn btn-success" style="padding: 0.8rem 2rem; font-weight: 600;">{% if card %}Salvar Alterações{% else %}Cadastrar Cartão{% endif %}</button>
+        </div>
+    </form>
+</div>
+<script>
+    const inputs = document.querySelectorAll('input, select');
+    inputs.forEach(el => {
+        el.addEventListener('focus', () => el.style.borderColor = 'var(--accent-glow)');
+        el.addEventListener('blur', () => el.style.borderColor = 'var(--glass-border)');
+    });
+</script>
+{% endblock %}

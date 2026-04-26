@@ -55,6 +55,7 @@ class BankAccount:
     holder_id: uuid.UUID  # Obrigatório apontar para a entidade Member
     name: str  # Ex: "Conta Corrente Itaú"
     current_balance: float = 0.0
+    ignores_consolidated_balance: bool = False
 
     def process_transaction(self, transaction: 'Transaction'):
         """Calcula o impacto da transação bancária apenas se ela tiver sido efetivada e pertencer a esta conta."""

@@ -14,8 +14,15 @@ def check_and_create_tables(db_path: str):
     cursor.execute('CREATE TABLE IF NOT EXISTS families (id TEXT PRIMARY KEY, name TEXT)')
     cursor.execute('CREATE TABLE IF NOT EXISTS members (id TEXT PRIMARY KEY, family_id TEXT, name TEXT)')
     
-    # Categorias de Gastos (Caso passem a existir independentemente)
-    cursor.execute('CREATE TABLE IF NOT EXISTS categories (id TEXT PRIMARY KEY, name TEXT)')
+    # Categorias de Gastos e Receitas
+    cursor.execute('CREATE TABLE IF NOT EXISTS categories (id TEXT PRIMARY KEY, name TEXT, type_str TEXT)')
+    
+    # Valida se a coluna type_str não existe (esquema antigo) e recria se necessário
+    cursor.execute("PRAGMA table_info(categories)")
+    columns = [col[1] for col in cursor.fetchall()]
+    if 'type_str' not in columns:
+        cursor.execute("DROP TABLE categories")
+        cursor.execute("CREATE TABLE categories (id TEXT PRIMARY KEY, name TEXT, type_str TEXT)")
     
     # Financeiro Nativo
     cursor.execute('''CREATE TABLE IF NOT EXISTS bank_accounts (
