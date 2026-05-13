@@ -55,6 +55,13 @@ class BankAccountMemoryRepository(BankAccountRepository):
     def list_by_family(self, family_id: uuid.UUID) -> list[BankAccount]:
         return [acc for acc in self._data.values() if acc.family_id == family_id]
 
+    def list_all(self) -> list[BankAccount]:
+        return list(self._data.values())
+
+    def delete(self, account_id: uuid.UUID) -> None:
+        if account_id in self._data:
+            del self._data[account_id]
+
 
 class CreditCardMemoryRepository(CreditCardRepository):
     """Nesse repositório falso, simulamos chaves estrangeiras duplas usando duas tabelas na memória. """
@@ -72,6 +79,26 @@ class CreditCardMemoryRepository(CreditCardRepository):
         """Equivalente a um JOIN SQL na memória varrendo a família-mãe do contrato de crédito."""
         family_master_ids = [m.id for m in self._master_cards.values() if m.family_id == family_id]
         return [inst for inst in self._instances.values() if inst.credit_card_id in family_master_ids]
+
+    def get_by_id(self, credit_card_id: uuid.UUID) -> Optional[CreditCard]:
+        return self._master_cards.get(credit_card_id)
+
+    def list_all(self) -> list[CreditCard]:
+        return list(self._master_cards.values())
+
+    def list_all_instances(self) -> list[CardInstance]:
+        return list(self._instances.values())
+
+    def get_instance_by_id(self, instance_id: uuid.UUID) -> Optional[CardInstance]:
+        return self._instances.get(instance_id)
+
+    def delete(self, credit_card_id: uuid.UUID) -> None:
+        if credit_card_id in self._master_cards:
+            del self._master_cards[credit_card_id]
+
+    def delete_instance(self, instance_id: uuid.UUID) -> None:
+        if instance_id in self._instances:
+            del self._instances[instance_id]
 
 
 class TransactionMemoryRepository(TransactionRepository):

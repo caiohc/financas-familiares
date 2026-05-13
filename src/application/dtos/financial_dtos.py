@@ -7,22 +7,29 @@ class CreateBankAccountDTO:
     """Entrada bruta para processar a criação de conta bancária por uma rota isolada."""
     family_id: uuid.UUID
     holder_id: uuid.UUID
-    name: str
+    nickname: Optional[str] = None
+    bank: str = ""
+    agency: str = ""
+    account_number: str = ""
 
 @dataclass(kw_only=True)
 class CreateCreditCardDTO:
     """Entrada para configurar o contrato Master principal de cartão."""
     family_id: uuid.UUID
     holder_id: uuid.UUID
-    name: str
+    nickname: Optional[str] = None
+    issuer: Optional[str] = None
+    brand: str
     limit: float
     due_day: int
+    bank_account_id: Optional[uuid.UUID] = None
 
 @dataclass(kw_only=True)
 class CreateCardInstanceDTO:
+    family_id: uuid.UUID
     credit_card_id: uuid.UUID
     holder_id: uuid.UUID
-    nickname: str
+    nickname: Optional[str] = None
 
 @dataclass(kw_only=True)
 class CreateCreditCardBillDTO:

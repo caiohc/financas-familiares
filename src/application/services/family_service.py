@@ -69,3 +69,15 @@ class FamilyService:
         
         self._member_repo.save(member)
         return member
+
+    def delete_family(self, family_id: uuid.UUID) -> None:
+        self.get_family(family_id)
+        if self._family_repo.has_dependencies(family_id):
+            raise ValueError("Não é possível excluir a família pois existem membros, contas, cartões ou transações vinculadas a ela.")
+        self._family_repo.delete(family_id)
+
+    def delete_member(self, member_id: uuid.UUID) -> None:
+        self.get_member(member_id)
+        if self._member_repo.has_dependencies(member_id):
+            raise ValueError("Não é possível excluir o membro pois ele é titular de contas bancárias ou cartões.")
+        self._member_repo.delete(member_id)

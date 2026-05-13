@@ -47,3 +47,14 @@ def update(member_id):
             return redirect(url_for('member.index'))
             
     return render_template('member/form.html', member=member_obj, families=families_list)
+
+@member_bp.route('/<uuid:member_id>/delete', methods=['POST'])
+def delete(member_id):
+    service = current_app.config['FAMILY_SERVICE']
+    try:
+        service.delete_member(member_id)
+        return redirect(url_for('member.index'))
+    except ValueError as e:
+        members = service.list_all_members()
+        families_dict = {f.id: f.name for f in service.list_families()} 
+        return render_template('member/index.html', members=members, families=families_dict, error=str(e))

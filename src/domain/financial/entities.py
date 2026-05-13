@@ -9,14 +9,9 @@ from enum import Enum
 from typing import Optional
 
 
-class TransactionType(Enum):
-    INCOME = "INCOME"
-    EXPENSE = "EXPENSE"
-
-
 @dataclass(kw_only=True)
 class Family:
-    """Escopo máximo do controle multi-tenant."""
+    """Escopo máximo do controle multi-tenant. Todo o controle financeiro esta vinculado a uma família."""
     id: uuid.UUID = field(default_factory=uuid.uuid4)
     name: str
     current_balance: float = 0.0
@@ -33,15 +28,22 @@ class Family:
 
 @dataclass(kw_only=True)
 class Member:
-    """Entidade do domínio financeiro representando o componente de gerência da família."""
+    """Entidade do domínio financeiro representando um integrante da família,
+    que é agente realizador de receita e/ou despesa."""
     id: uuid.UUID = field(default_factory=uuid.uuid4)
     family_id: uuid.UUID
     name: str
 
 
+class TransactionType(Enum):
+    INCOME = "INCOME"
+    EXPENSE = "EXPENSE"
+
+
 @dataclass(kw_only=True)
 class Category:
-    """Categoria para organização do orçamento (Ex: Alimentação, Lazer)."""
+    """Categoria para organização do orçamento.
+    As transações são agrupadas por categorias (Ex: Alimentação, Lazer)."""
     id: uuid.UUID = field(default_factory=uuid.uuid4)
     name: str
     type: TransactionType
@@ -49,13 +51,15 @@ class Category:
 
 @dataclass(kw_only=True)
 class BankAccount:
-    """Uma conta corrente ou poupança."""
+    """Uma conta corrente ou poupança em banco ou fintech."""
     id: uuid.UUID = field(default_factory=uuid.uuid4)
     family_id: uuid.UUID
-    holder_id: uuid.UUID  # Obrigatório apontar para a entidade Member
-    name: str  # Ex: "Conta Corrente Itaú"
+    holder_id: uuid.UUID  # Membro da família titular da conta
+    nickname: str
+    bank: str = ""
+    agency: str = ""
+    account_number: str = ""
     current_balance: float = 0.0
-    ignores_consolidated_balance: bool = False
 
     def process_transaction(self, transaction: 'Transaction'):
         """Calcula o impacto da transação bancária apenas se ela tiver sido efetivada e pertencer a esta conta."""
@@ -68,19 +72,24 @@ class BankAccount:
 
 @dataclass(kw_only=True)
 class CreditCard:
-    """Contrato Master de Limite de Crédito junto à instituição financeira."""
+    """Contrato limite de crédito (cartão de crédito) junto à instituição financeira."""
     id: uuid.UUID = field(default_factory=uuid.uuid4)
     family_id: uuid.UUID
     holder_id: uuid.UUID  # Quem é o responsável legal do cartão (Member)
-    name: str  
+    nickname: str  
+    issuer: Optional[str] = None  # Emissor - quem forneceu o cartão (Banco ou fintech)
+    brand: str  # Bandeira do cartão (VISA, Mastercard, Elo, etc)
+    tier: Optional[str] = None  # Nível do cartão (Gold, Platinum, Black, etc)
     limit: float
     due_day: int  # Dia do mês estipulado para o vencimento da fatura (1 a 31)
+    bank_account_id: Optional[uuid.UUID] = None  # Conta a qual o cartão é vinculado
 
 
 @dataclass(kw_only=True)
 class CreditCardBill:
-    """A Fatura de fechamento de um contrato/cartão."""
+    """Uma fatura de um cartão de crédito."""
     id: uuid.UUID = field(default_factory=uuid.uuid4)
+    family_id: uuid.UUID
     credit_card_id: uuid.UUID
     reference_month: str  # Formato YYYY-MM (Ex: 2026-04)
     due_date: date  # Dia exato do vencimento nesse mês específico
@@ -98,12 +107,12 @@ class CreditCardBill:
 
 @dataclass(kw_only=True)
 class CardInstance:
-    """Plásticos ou Cartões virtuais emitidos a partir de um CreditCard."""
+    """Plásticos ou Cartões virtuais emitidos a partir de um cartão de crédito."""
     id: uuid.UUID = field(default_factory=uuid.uuid4)
+    family_id: uuid.UUID
     credit_card_id: uuid.UUID
     holder_id: uuid.UUID  # Quem tem a posse deste plástico (Member ou dependente)
     nickname: str  
-
 
 
 @dataclass(kw_only=True)

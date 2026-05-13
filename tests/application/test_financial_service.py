@@ -45,11 +45,14 @@ def test_financial_service_crud_flux():
         family_id=titular_valido.family_id, 
         holder_id=titular_valido.id, 
         name="Infinite Black Família", 
+        brand="Mastercard",
         limit=25000.0,
-        due_day=10
+        due_day=10,
+        bank_account_id=acc.id
     )
     card_master = service.create_credit_card(cc_dto)
     assert card_master.limit == 25000.0
+    assert card_master.bank_account_id == acc.id
     
     # 4. ACT -> Plástico Impresso e Vinculado ao master
     inst_dto = CreateCardInstanceDTO(
@@ -93,3 +96,41 @@ def test_financial_service_blocks_cross_family_intruders():
     
     with pytest.raises(ValueError, match="não pertence à família selecionada"):
         service.create_bank_account(invasao_dto)
+
+def test_financial_service_blocks_cross_family_credit_card_account():
+    """Garante que não é possível atrelar um cartão a uma conta de outra família."""
+    db_members = MemberMemoryRepository()
+    db_accounts = BankAccountMemoryRepository()
+    service = FinancialService(
+        bank_account_repo=db_accounts,
+        credit_card_repo=CreditCardMemoryRepository(),
+        member_repo=db_members,
+        transaction_repo=TransactionMemoryRepository(),
+        credit_card_bill_repo=CreditCardBillMemoryRepository()
+    )
+    
+    familia_x = uuid.uuid4()
+    titular_x = Member(family_id=familia_x, name="João Silva")
+    db_members.save(titular_x)
+    
+    familia_y = uuid.uuid4()
+    titular_y = Member(family_id=familia_y, name="Maria Santos")
+    db_members.save(titular_y)
+    
+    conta_y = BankAccount(family_id=familia_y, holder_id=titular_y.id, name="Conta Maria")
+    db_accounts.save(conta_y)
+    
+    # João tenta criar um cartão usando a conta bancária da Maria para débito automático
+    dto_invasao_cartao = CreateCreditCardDTO(
+        family_id=familia_x,
+        holder_id=titular_x.id,
+        name="Cartão Fake",
+        brand="VISA",
+        limit=1000.0,
+        due_day=1,
+        bank_account_id=conta_y.id
+    )
+    
+    with pytest.raises(ValueError, match="não pertence à família selecionada"):
+        service.create_credit_card(dto_invasao_cartao)
+

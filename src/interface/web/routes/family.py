@@ -37,3 +37,13 @@ def update(family_id):
             return redirect(url_for('family.index'))
             
     return render_template('family/form.html', family=family_obj)
+
+@family_bp.route('/<uuid:family_id>/delete', methods=['POST'])
+def delete(family_id):
+    service = current_app.config['FAMILY_SERVICE']
+    try:
+        service.delete_family(family_id)
+        return redirect(url_for('family.index'))
+    except ValueError as e:
+        families = service.list_families()
+        return render_template('family/index.html', families=families, error=str(e))

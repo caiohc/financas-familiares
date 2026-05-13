@@ -50,6 +50,22 @@ class FamilySQLiteRepository(FamilyRepository):
                 result.append(f)
             return result
 
+    def delete(self, family_id: uuid.UUID) -> None:
+        with get_connection(self.db_path) as conn:
+            conn.execute("DELETE FROM families WHERE id = ?", (str(family_id),))
+
+    def has_dependencies(self, family_id: uuid.UUID) -> bool:
+        with get_connection(self.db_path) as conn:
+            id_str = str(family_id)
+            if conn.execute("SELECT 1 FROM members WHERE family_id = ? LIMIT 1", (id_str,)).fetchone(): return True
+            if conn.execute("SELECT 1 FROM bank_accounts WHERE family_id = ? LIMIT 1", (id_str,)).fetchone(): return True
+            if conn.execute("SELECT 1 FROM credit_cards WHERE family_id = ? LIMIT 1", (id_str,)).fetchone(): return True
+            if conn.execute("SELECT 1 FROM transactions WHERE family_id = ? LIMIT 1", (id_str,)).fetchone(): return True
+            if conn.execute("SELECT 1 FROM credit_card_bills WHERE family_id = ? LIMIT 1", (id_str,)).fetchone(): return True
+            # card_instances possui family_id desde a migração 0002
+            if conn.execute("SELECT 1 FROM card_instances WHERE family_id = ? LIMIT 1", (id_str,)).fetchone(): return True
+            return False
+
 
 class MemberSQLiteRepository(MemberRepository):
     def __init__(self, db_path: str):
@@ -89,6 +105,18 @@ class MemberSQLiteRepository(MemberRepository):
             m.id = uuid.UUID(r['id'])
             res.append(m)
         return res
+
+    def delete(self, member_id: uuid.UUID) -> None:
+        with get_connection(self.db_path) as conn:
+            conn.execute("DELETE FROM members WHERE id = ?", (str(member_id),))
+
+    def has_dependencies(self, member_id: uuid.UUID) -> bool:
+        with get_connection(self.db_path) as conn:
+            id_str = str(member_id)
+            if conn.execute("SELECT 1 FROM bank_accounts WHERE holder_id = ? LIMIT 1", (id_str,)).fetchone(): return True
+            if conn.execute("SELECT 1 FROM credit_cards WHERE holder_id = ? LIMIT 1", (id_str,)).fetchone(): return True
+            if conn.execute("SELECT 1 FROM card_instances WHERE holder_id = ? LIMIT 1", (id_str,)).fetchone(): return True
+            return False
 
 
 class CategorySQLiteRepository(CategoryRepository):
@@ -145,11 +173,11 @@ class BankAccountSQLiteRepository(BankAccountRepository):
     def save(self, account: BankAccount) -> None:
         with get_connection(self.db_path) as conn:
             conn.execute(
-                "INSERT INTO bank_accounts (id, family_id, holder_id, name, balance, ignores_consolidated_balance) "
-                "VALUES (?, ?, ?, ?, ?, ?) "
-                "ON CONFLICT(id) DO UPDATE SET balance=excluded.balance",
-                (str(account.id), str(account.family_id), str(account.holder_id), account.name, 
-                 account.current_balance, int(account.ignores_consolidated_balance))
+                "INSERT INTO bank_accounts (id, family_id, holder_id, nickname, bank, agency, account_number, balance, ignores_consolidated_balance) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) "
+                "ON CONFLICT(id) DO UPDATE SET nickname=excluded.nickname, bank=excluded.bank, agency=excluded.agency, account_number=excluded.account_number, balance=excluded.balance",
+                (str(account.id), str(account.family_id), str(account.holder_id), account.nickname, account.bank, account.agency, account.account_number, 
+                 account.current_balance, 0) # ignores_consolidated_balance removido da entidade mas mantido no banco por segurança ou v0
             )
 
     def get_by_id(self, account_id: uuid.UUID) -> Optional[BankAccount]:
@@ -159,9 +187,11 @@ class BankAccountSQLiteRepository(BankAccountRepository):
                 b = BankAccount(
                     family_id=uuid.UUID(row['family_id']), 
                     holder_id=uuid.UUID(row['holder_id']), 
-                    name=row['name'], 
-                    current_balance=row['balance'], 
-                    ignores_consolidated_balance=bool(row['ignores_consolidated_balance'])
+                    nickname=row['nickname'], 
+                    bank=row['bank'] if 'bank' in row.keys() else "",
+                    agency=row['agency'] if 'agency' in row.keys() else "",
+                    account_number=row['account_number'] if 'account_number' in row.keys() else "",
+                    current_balance=row['balance']
                 )
                 b.id = uuid.UUID(row['id'])
                 return b
@@ -175,9 +205,11 @@ class BankAccountSQLiteRepository(BankAccountRepository):
                 b = BankAccount(
                     family_id=uuid.UUID(row['family_id']), 
                     holder_id=uuid.UUID(row['holder_id']), 
-                    name=row['name'], 
-                    current_balance=row['balance'], 
-                    ignores_consolidated_balance=bool(row['ignores_consolidated_balance'])
+                    nickname=row['nickname'], 
+                    bank=row['bank'] if 'bank' in row.keys() else None,
+                    agency=row['agency'] if 'agency' in row.keys() else None,
+                    account_number=row['account_number'] if 'account_number' in row.keys() else None,
+                    current_balance=row['balance']
                 )
                 b.id = uuid.UUID(row['id'])
                 res.append(b)
@@ -191,13 +223,19 @@ class BankAccountSQLiteRepository(BankAccountRepository):
                 b = BankAccount(
                     family_id=uuid.UUID(row['family_id']), 
                     holder_id=uuid.UUID(row['holder_id']), 
-                    name=row['name'], 
-                    current_balance=row['balance'], 
-                    ignores_consolidated_balance=bool(row['ignores_consolidated_balance'])
+                    nickname=row['nickname'], 
+                    bank=row['bank'] if 'bank' in row.keys() else None,
+                    agency=row['agency'] if 'agency' in row.keys() else None,
+                    account_number=row['account_number'] if 'account_number' in row.keys() else None,
+                    current_balance=row['balance']
                 )
                 b.id = uuid.UUID(row['id'])
                 res.append(b)
             return res
+
+    def delete(self, account_id: uuid.UUID) -> None:
+        with get_connection(self.db_path) as conn:
+            conn.execute("DELETE FROM bank_accounts WHERE id = ?", (str(account_id),))
 
 
 class CreditCardSQLiteRepository(CreditCardRepository):
@@ -207,19 +245,19 @@ class CreditCardSQLiteRepository(CreditCardRepository):
     def save(self, cc: CreditCard) -> None:
         with get_connection(self.db_path) as conn:
             conn.execute(
-                "INSERT INTO credit_cards (id, family_id, holder_id, name, limit_amount, due_day) "
-                "VALUES (?, ?, ?, ?, ?, ?) "
-                "ON CONFLICT(id) DO UPDATE SET limit_amount=excluded.limit_amount, due_day=excluded.due_day",
-                (str(cc.id), str(cc.family_id), str(cc.holder_id), cc.name, cc.limit, cc.due_day)
+                "INSERT INTO credit_cards (id, family_id, holder_id, nickname, issuer, brand, tier, limit_amount, due_day, bank_account_id) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+                "ON CONFLICT(id) DO UPDATE SET nickname=excluded.nickname, issuer=excluded.issuer, brand=excluded.brand, tier=excluded.tier, limit_amount=excluded.limit_amount, due_day=excluded.due_day, bank_account_id=excluded.bank_account_id",
+                (str(cc.id), str(cc.family_id), str(cc.holder_id), cc.nickname, cc.issuer, cc.brand, cc.tier, cc.limit, cc.due_day, str(cc.bank_account_id) if cc.bank_account_id else None)
             )
 
     def save_instance(self, ci: CardInstance) -> None:
         with get_connection(self.db_path) as conn:
             conn.execute(
-                "INSERT INTO card_instances (id, credit_card_id, holder_id, nickname) "
-                "VALUES (?, ?, ?, ?) "
+                "INSERT INTO card_instances (id, family_id, credit_card_id, holder_id, nickname) "
+                "VALUES (?, ?, ?, ?, ?) "
                 "ON CONFLICT(id) DO UPDATE SET nickname=excluded.nickname",
-                (str(ci.id), str(ci.credit_card_id), str(ci.holder_id), ci.nickname)
+                (str(ci.id), str(ci.family_id), str(ci.credit_card_id), str(ci.holder_id), ci.nickname)
             )
 
     def list_instances_by_family(self, family_id: uuid.UUID) -> list[CardInstance]:
@@ -234,6 +272,7 @@ class CreditCardSQLiteRepository(CreditCardRepository):
             res = []
             for r in rows:
                 c = CardInstance(
+                    family_id=uuid.UUID(r['family_id']) if r['family_id'] else uuid.UUID(int=0),
                     credit_card_id=uuid.UUID(r['credit_card_id']),
                     holder_id=uuid.UUID(r['holder_id']),
                     nickname=r['nickname']
@@ -249,9 +288,13 @@ class CreditCardSQLiteRepository(CreditCardRepository):
                 c = CreditCard(
                     family_id=uuid.UUID(row['family_id']),
                     holder_id=uuid.UUID(row['holder_id']),
-                    name=row['name'],
+                    nickname=row['nickname'],
+                    issuer=row['issuer'] if 'issuer' in row.keys() else '',
+                    brand=row['brand'] if 'brand' in row.keys() and row['brand'] else 'Desconhecida',
+                    tier=row['tier'] if 'tier' in row.keys() else '',
                     limit=row['limit_amount'],
-                    due_day=row['due_day']
+                    due_day=row['due_day'],
+                    bank_account_id=uuid.UUID(row['bank_account_id']) if 'bank_account_id' in row.keys() and row['bank_account_id'] else None
                 )
                 c.id = uuid.UUID(row['id'])
                 return c
@@ -265,9 +308,13 @@ class CreditCardSQLiteRepository(CreditCardRepository):
                 c = CreditCard(
                     family_id=uuid.UUID(row['family_id']),
                     holder_id=uuid.UUID(row['holder_id']),
-                    name=row['name'],
+                    nickname=row['nickname'],
+                    issuer=row['issuer'] if 'issuer' in row.keys() else '',
+                    brand=row['brand'] if 'brand' in row.keys() and row['brand'] else 'Desconhecida',
+                    tier=row['tier'] if 'tier' in row.keys() else '',
                     limit=row['limit_amount'],
-                    due_day=row['due_day']
+                    due_day=row['due_day'],
+                    bank_account_id=uuid.UUID(row['bank_account_id']) if 'bank_account_id' in row.keys() and row['bank_account_id'] else None
                 )
                 c.id = uuid.UUID(row['id'])
                 res.append(c)
@@ -278,6 +325,7 @@ class CreditCardSQLiteRepository(CreditCardRepository):
             row = conn.execute("SELECT * FROM card_instances WHERE id = ?", (str(instance_id),)).fetchone()
             if row:
                 c = CardInstance(
+                    family_id=uuid.UUID(row['family_id']) if row['family_id'] else uuid.UUID(int=0),
                     credit_card_id=uuid.UUID(row['credit_card_id']),
                     holder_id=uuid.UUID(row['holder_id']),
                     nickname=row['nickname']
@@ -292,6 +340,7 @@ class CreditCardSQLiteRepository(CreditCardRepository):
             res = []
             for row in rows:
                 c = CardInstance(
+                    family_id=uuid.UUID(row['family_id']) if row['family_id'] else uuid.UUID(int=0),
                     credit_card_id=uuid.UUID(row['credit_card_id']),
                     holder_id=uuid.UUID(row['holder_id']),
                     nickname=row['nickname']
@@ -299,6 +348,14 @@ class CreditCardSQLiteRepository(CreditCardRepository):
                 c.id = uuid.UUID(row['id'])
                 res.append(c)
             return res
+
+    def delete(self, credit_card_id: uuid.UUID) -> None:
+        with get_connection(self.db_path) as conn:
+            conn.execute("DELETE FROM credit_cards WHERE id = ?", (str(credit_card_id),))
+
+    def delete_instance(self, instance_id: uuid.UUID) -> None:
+        with get_connection(self.db_path) as conn:
+            conn.execute("DELETE FROM card_instances WHERE id = ?", (str(instance_id),))
 
 
 class CreditCardBillSQLiteRepository(CreditCardBillRepository):
@@ -308,10 +365,10 @@ class CreditCardBillSQLiteRepository(CreditCardBillRepository):
     def save(self, bill: CreditCardBill) -> None:
         with get_connection(self.db_path) as conn:
             conn.execute(
-                "INSERT INTO credit_card_bills (id, credit_card_id, reference_month, due_date, total_amount) "
-                "VALUES (?, ?, ?, ?, ?) "
-                "ON CONFLICT(id) DO UPDATE SET total_amount=excluded.total_amount",
-                (str(bill.id), str(bill.credit_card_id), bill.reference_month, str(bill.due_date), bill.total_amount)
+                "INSERT INTO credit_card_bills (id, family_id, credit_card_id, reference_month, due_date, is_closed, total_amount) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?) "
+                "ON CONFLICT(id) DO UPDATE SET total_amount=excluded.total_amount, is_closed=excluded.is_closed",
+                (str(bill.id), str(bill.family_id), str(bill.credit_card_id), bill.reference_month, str(bill.due_date), 1 if bill.is_closed else 0, bill.total_amount)
             )
 
     def get_by_id(self, bill_id: uuid.UUID) -> Optional[CreditCardBill]:
@@ -321,9 +378,11 @@ class CreditCardBillSQLiteRepository(CreditCardBillRepository):
                 year, month, day = map(int, row['due_date'].split('-'))
                 dt = datetime.date(year, month, day)
                 b = CreditCardBill(
+                    family_id=uuid.UUID(row['family_id']) if row['family_id'] else uuid.UUID(int=0),
                     credit_card_id=uuid.UUID(row['credit_card_id']),
                     reference_month=row['reference_month'],
-                    due_date=dt
+                    due_date=dt,
+                    is_closed=bool(row['is_closed']) if 'is_closed' in row.keys() else False
                 )
                 b.id = uuid.UUID(row['id'])
                 b.total_amount = row['total_amount']
@@ -364,7 +423,7 @@ class TransactionSQLiteRepository(TransactionRepository):
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET is_realized=excluded.is_realized''',
                 (
-                    str(t.id), str(t.family_id), str(t.category_id), t.type_str, t.amount, t.description,
+                    str(t.id), str(t.family_id), str(t.category_id), t.type.value, t.amount, t.description,
                     str(t.date), 1 if t.is_realized else 0,
                     str(t.bank_account_id) if t.bank_account_id else None,
                     str(t.credit_card_id) if t.credit_card_id else None,
@@ -404,7 +463,7 @@ class TransactionSQLiteRepository(TransactionRepository):
         t = Transaction(
             family_id=uuid.UUID(row['family_id']),
             category_id=uuid.UUID(row['category_id']),
-            type_str=row['type_str'],
+            type=TransactionType(row['type_str']),
             date=datetime.date(year, month, day),
             amount=row['amount'],
             description=row['description'],

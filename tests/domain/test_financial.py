@@ -44,6 +44,7 @@ def test_credit_card_hierarchy():
         family_id=family_id,
         holder_id=father_id,
         name="Cartão Infinite",
+        brand="VISA",
         limit=10000.00,
         due_day=5
     )

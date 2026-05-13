@@ -26,16 +26,22 @@ def create():
     members_list = family_service.list_all_members()
     
     if request.method == 'POST':
-        name = request.form.get('name')
+        nickname = request.form.get('nickname')
         family_id_str = request.form.get('family_id')
         holder_id_str = request.form.get('holder_id')
+        bank = request.form.get('bank')
+        agency = request.form.get('agency')
+        account_number = request.form.get('account_number')
         
-        if name and family_id_str and holder_id_str:
+        if family_id_str and holder_id_str:
             try:
                 dto = CreateBankAccountDTO(
                     family_id=uuid.UUID(family_id_str), 
                     holder_id=uuid.UUID(holder_id_str), 
-                    name=name
+                    nickname=nickname if nickname else None,
+                    bank=bank if bank else "",
+                    agency=agency if agency else "",
+                    account_number=account_number if account_number else ""
                 )
                 service.create_bank_account(dto)
                 return redirect(url_for('bank_account.index'))
@@ -58,13 +64,35 @@ def update(account_id):
         return redirect(url_for('bank_account.index'))
         
     if request.method == 'POST':
-        name = request.form.get('name')
+        nickname = request.form.get('nickname')
+        bank = request.form.get('bank')
+        agency = request.form.get('agency')
+        account_number = request.form.get('account_number')
         
-        if name:
-            try:
-                service.update_bank_account(account_id, name)
-                return redirect(url_for('bank_account.index'))
-            except ValueError as e:
-                return render_template('bank_account/form.html', account=account_obj, families=families_list, members=members_list, error=str(e))
+        try:
+            service.update_bank_account(
+                account_id, 
+                nickname=nickname if nickname else "",
+                bank=bank if bank else "",
+                agency=agency if agency else "",
+                account_number=account_number if account_number else ""
+            )
+            return redirect(url_for('bank_account.index'))
+        except ValueError as e:
+            return render_template('bank_account/form.html', account=account_obj, families=families_list, members=members_list, error=str(e))
             
     return render_template('bank_account/form.html', account=account_obj, families=families_list, members=members_list)
+
+@bank_account_bp.route('/<uuid:account_id>/delete', methods=['POST'])
+def delete(account_id):
+    service = current_app.config['FINANCIAL_SERVICE']
+    family_service = current_app.config['FAMILY_SERVICE']
+    
+    try:
+        service.delete_bank_account(account_id)
+        return redirect(url_for('bank_account.index'))
+    except ValueError as e:
+        accounts = service.list_all_bank_accounts()
+        families_dict = {f.id: f.name for f in family_service.list_families()}
+        members_dict = {m.id: m.name for m in family_service.list_all_members()}
+        return render_template('bank_account/index.html', accounts=accounts, families=families_dict, members=members_dict, error=str(e))

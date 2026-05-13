@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="page-header">
-    <h1>{% if account %}Editar Conta: {{ account.name }}{% else %}Nova Conta Bancária{% endif %}</h1>
+    <h1>{% if account %}Editar Conta: {{ account.nickname }}{% else %}Nova Conta Bancária{% endif %}</h1>
     <a href="{{ url_for('bank_account.index') }}" class="btn" style="background-color: var(--glass-bg); color: var(--text-primary); border: 1px solid var(--glass-border);">Voltar</a>
 </div>
 
@@ -17,8 +17,25 @@
 
     <form method="POST">
         <div class="form-group" style="margin-bottom: 1.5rem;">
-            <label for="name" style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Nome da Conta</label>
-            <input type="text" id="name" name="name" class="form-control" value="{{ account.name if account else '' }}" required placeholder="Ex: Conta Corrente Itaú" style="width: 100%; padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border); background-color: rgba(0,0,0,0.3); color: var(--text-primary); font-size: 1.1rem; outline: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); transition: border-color 0.2s;">
+            <label for="bank" style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Banco</label>
+            <input type="text" id="bank" name="bank" class="form-control" value="{{ account.bank if account else '' }}" required placeholder="Ex: Itaú, Nubank" style="width: 100%; padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border); background-color: rgba(0,0,0,0.3); color: var(--text-primary); font-size: 1.1rem; outline: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); transition: border-color 0.2s;">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;">
+            <div class="form-group">
+                <label for="agency" style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Agência</label>
+                <input type="text" id="agency" name="agency" class="form-control" value="{{ account.agency if account else '' }}" required placeholder="Ex: 0001" style="width: 100%; padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border); background-color: rgba(0,0,0,0.3); color: var(--text-primary); font-size: 1.1rem; outline: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); transition: border-color 0.2s;">
+            </div>
+            <div class="form-group">
+                <label for="account_number" style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Conta</label>
+                <input type="text" id="account_number" name="account_number" class="form-control" value="{{ account.account_number if account else '' }}" required placeholder="Ex: 12345-6" style="width: 100%; padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border); background-color: rgba(0,0,0,0.3); color: var(--text-primary); font-size: 1.1rem; outline: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); transition: border-color 0.2s;">
+            </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+            <label for="nickname" style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Nome Personalizado (Opcional)</label>
+            <input type="text" id="nickname" name="nickname" class="form-control" value="{{ account.nickname if account else '' }}" placeholder="Ex: Conta Corrente Itaú" style="width: 100%; padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border); background-color: rgba(0,0,0,0.3); color: var(--text-primary); font-size: 1.1rem; outline: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); transition: border-color 0.2s;">
+            <small style="color: var(--text-secondary); display: block; margin-top: 0.5rem;">Se deixado em branco, um nome padrão será gerado combinando Banco e o nome do Titular.</small>
         </div>
         
         {% if not account %}

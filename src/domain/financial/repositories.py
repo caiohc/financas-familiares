@@ -28,6 +28,14 @@ class FamilyRepository(ABC):
     def list_all(self) -> list[Family]:
         pass
 
+    @abstractmethod
+    def delete(self, family_id: uuid.UUID) -> None:
+        pass
+
+    @abstractmethod
+    def has_dependencies(self, family_id: uuid.UUID) -> bool:
+        pass
+
 
 class MemberRepository(ABC):
     """Interface para gerenciar Membros. O contexto financeiro dita as buscas atreladas à Família."""
@@ -45,6 +53,14 @@ class MemberRepository(ABC):
 
     @abstractmethod
     def list_all(self) -> list[Member]:
+        pass
+
+    @abstractmethod
+    def delete(self, member_id: uuid.UUID) -> None:
+        pass
+
+    @abstractmethod
+    def has_dependencies(self, member_id: uuid.UUID) -> bool:
         pass
 
 
@@ -81,6 +97,10 @@ class BankAccountRepository(ABC):
     def list_all(self) -> list[BankAccount]:
         pass
 
+    @abstractmethod
+    def delete(self, account_id: uuid.UUID) -> None:
+        pass
+
 
 class CreditCardRepository(ABC):
     """Contrato que rege a hierarquia do master card e das respectivas instâncias (plásticos)."""
@@ -112,6 +132,14 @@ class CreditCardRepository(ABC):
 
     @abstractmethod
     def get_instance_by_id(self, instance_id: uuid.UUID) -> Optional[CardInstance]:
+        pass
+
+    @abstractmethod
+    def delete(self, credit_card_id: uuid.UUID) -> None:
+        pass
+
+    @abstractmethod
+    def delete_instance(self, instance_id: uuid.UUID) -> None:
         pass
 
 
