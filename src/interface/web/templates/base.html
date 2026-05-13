@@ -45,17 +45,58 @@
             display: flex;
             flex-direction: column;
             gap: 1.5rem;
+            transition: width 0.3s ease, padding 0.3s ease;
+            flex-shrink: 0;
         }
 
-        .sidebar-brand {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            text-transform: uppercase;
-            letter-spacing: 2px;
+        body.sidebar-is-collapsed .sidebar {
+            width: 84px;
+            padding: 2rem 0.8rem;
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             margin-bottom: 1.5rem;
             padding-bottom: 1rem;
             border-bottom: 1px solid var(--glass-border);
+        }
+
+        .sidebar-brand {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            letter-spacing: 1px;
+            white-space: nowrap;
+            overflow: hidden;
+            transition: opacity 0.2s;
+        }
+
+        body.sidebar-is-collapsed .sidebar-brand {
+            display: none;
+        }
+
+        body.sidebar-is-collapsed .sidebar-header {
+            justify-content: center;
+        }
+
+        .toggle-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0.4rem;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: 0.2s;
+        }
+
+        .toggle-btn:hover {
+            background-color: rgba(255,255,255,0.1);
+            color: var(--text-primary);
         }
 
         .nav-links {
@@ -75,6 +116,17 @@
             display: flex;
             align-items: center;
             gap: 0.75rem;
+            white-space: nowrap;
+            overflow: hidden;
+        }
+
+        body.sidebar-is-collapsed .nav-links a {
+            justify-content: center;
+            padding: 0.75rem 0;
+        }
+
+        body.sidebar-is-collapsed .nav-links a span {
+            display: none;
         }
 
         .nav-links a:hover,
@@ -140,12 +192,24 @@
 </head>
 
 <body>
+    <!-- Previne o piscar da tela (FOUC) aplicando a classe antes de renderizar o DOM -->
+    <script>
+        if (localStorage.getItem('sidebarCollapsed') === 'true') {
+            document.body.classList.add('sidebar-is-collapsed');
+        }
+    </script>
 
     <!-- Painel de Gerenciamento à Esquerda -->
     <aside class="sidebar">
-        <div class="sidebar-brand"
-            style="font-size: 1.05rem; line-height: 1.4; text-align: center; display: flex; align-items: center; justify-content: center; gap: 0.5rem;">
-            CONTROLE FINANCEIRO FAMILIAR
+        <div class="sidebar-header">
+            <div class="sidebar-brand">FINANÇAS</div>
+            <button id="sidebarToggle" class="toggle-btn" title="Recolher/Expandir Menu">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
         </div>
         <ul class="nav-links">
             <li>
@@ -157,7 +221,7 @@
                         <rect x="14" y="12" width="7" height="9"></rect>
                         <rect x="3" y="16" width="7" height="5"></rect>
                     </svg>
-                    Dashboard Geral
+                    <span>Dashboard Geral</span>
                 </a>
             </li>
             <li>
@@ -169,7 +233,7 @@
                         <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
                         <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                     </svg>
-                    Famílias
+                    <span>Famílias</span>
                 </a>
             </li>
             <li>
@@ -179,7 +243,7 @@
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                         <circle cx="12" cy="7" r="4"></circle>
                     </svg>
-                    Membros das famílias
+                    <span>Membros das famílias</span>
                 </a>
             </li>
             <li>
@@ -189,7 +253,7 @@
                         <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
                         <line x1="7" y1="7" x2="7.01" y2="7"></line>
                     </svg>
-                    Categorias
+                    <span>Categorias</span>
                 </a>
             </li>
             <li>
@@ -204,7 +268,7 @@
                         <line x1="14" y1="17" x2="14" y2="7"></line>
                         <line x1="18" y1="17" x2="18" y2="7"></line>
                     </svg>
-                    Contas Bancárias
+                    <span>Contas Bancárias</span>
                 </a>
             </li>
             <li>
@@ -214,7 +278,7 @@
                         <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
                         <line x1="1" y1="10" x2="23" y2="10"></line>
                     </svg>
-                    Cartões de Crédito
+                    <span>Cartões de Crédito</span>
                 </a>
             </li>
             <li>
@@ -227,7 +291,7 @@
                         <line x1="16" y1="17" x2="8" y2="17"></line>
                         <polyline points="10 9 9 9 8 9"></polyline>
                     </svg>
-                    Auditoria de Transações
+                    <span>Auditoria de Transações</span>
                 </a>
             </li>
         </ul>
@@ -239,6 +303,15 @@
         {% endblock %}
     </main>
 
+    <!-- Script para gerenciar o Toggle da Sidebar -->
+    <script>
+        const toggleBtn = document.getElementById('sidebarToggle');
+        
+        toggleBtn.addEventListener('click', () => {
+            const isCollapsed = document.body.classList.toggle('sidebar-is-collapsed');
+            localStorage.setItem('sidebarCollapsed', isCollapsed);
+        });
+    </script>
 </body>
 
 </html>

@@ -35,8 +35,6 @@
                     </th>
                     <th style="padding: 1rem 1.5rem; color: var(--text-secondary); font-weight: 500;">Conta bancária
                     </th>
-                    <th style="padding: 1rem 1.5rem; color: var(--text-secondary); font-weight: 500;">Limite</th>
-                    <th style="padding: 1rem 1.5rem; color: var(--text-secondary); font-weight: 500;">Vencimento</th>
                     <th
                         style="padding: 1rem 1.5rem; color: var(--text-secondary); font-weight: 500; text-align: right;">
                         Ações</th>
@@ -60,9 +58,6 @@
                         <span style="opacity: 0.5;">Fatura Avulsa</span>
                         {% endif %}
                     </td>
-                    <td style="padding: 1rem 1.5rem; font-weight: 600; color: var(--success-color);">R$ {{
-                        "%.2f"|format(c.limit) }}</td>
-                    <td style="padding: 1rem 1.5rem; color: var(--text-secondary);">Dia {{ c.due_day }}</td>
                     <td style="padding: 1rem 1.5rem; text-align: right; display: flex; justify-content: flex-end; gap: 0.5rem;">
                         <a href="{{ url_for('credit_card.update', card_id=c.id) }}" class="btn"
                             style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background-color: rgba(47, 129, 247, 0.2); color: var(--accent-glow);">✏️
@@ -74,7 +69,7 @@
                 </tr>
                 {% else %}
                 <tr>
-                    <td colspan="8" style="padding: 3rem; text-align: center; color: var(--text-secondary);">Nenhum
+                    <td colspan="6" style="padding: 3rem; text-align: center; color: var(--text-secondary);">Nenhum
                         cartão principal cadastrado.</td>
                 </tr>
                 {% endfor %}
