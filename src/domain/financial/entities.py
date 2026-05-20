@@ -3,10 +3,23 @@ Subdomínio Financeiro (Orçamento e Organização Familiar)
 """
 
 import uuid
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import date
 from enum import Enum
 from typing import Optional
+
+
+class TransactionType(Enum):
+    INCOME = "INCOME"
+    EXPENSE = "EXPENSE"
+    TRANSFER_IN = "TRANSFER_IN"
+    TRANSFER_OUT = "TRANSFER_OUT"
+
+
+class AccountType(Enum):
+    ASSET = "ASSET"       # Ativos: Conta Bancária, Dinheiro
+    LIABILITY = "LIABILITY" # Passivos: Cartão de Crédito, Fiado
 
 
 @dataclass(kw_only=True)
@@ -16,10 +29,15 @@ class Family:
     name: str
     current_balance: float = 0.0
 
+    def __post_init__(self):
+        if not self.name or not self.name.strip():
+            raise ValueError("Nome da família é obrigatório.")
+
     def process_transaction(self, transaction: 'Transaction'):
         """Domínio Rico: O próprio objeto atualiza seu saldo cumulativo interpretando a Transação."""
         if (transaction.is_realized and transaction.family_id == self.id
                 and not transaction.ignore_in_family_balance):
+            # Transferências não alteram o patrimônio líquido global da família
             if transaction.type == TransactionType.INCOME:
                 self.current_balance += transaction.amount
             elif transaction.type == TransactionType.EXPENSE:
@@ -34,10 +52,11 @@ class Member:
     family_id: uuid.UUID
     name: str
 
-
-class TransactionType(Enum):
-    INCOME = "INCOME"
-    EXPENSE = "EXPENSE"
+    def __post_init__(self):
+        if not self.name or not self.name.strip():
+            raise ValueError("Nome do membro é obrigatório.")
+        if not self.family_id:
+            raise ValueError("Membro deve pertencer a uma família.")
 
 
 @dataclass(kw_only=True)
@@ -48,41 +67,131 @@ class Category:
     name: str
     type: TransactionType
 
+    def __post_init__(self):
+        if not self.name or not self.name.strip():
+            raise ValueError("Nome da categoria é obrigatório.")
+        if not self.type:
+            raise ValueError("Tipo da categoria é obrigatório.")
+
 
 @dataclass(kw_only=True)
-class BankAccount:
-    """Uma conta corrente ou poupança em banco ou fintech."""
+class Account(ABC):
+    """Superclasse abstrata para Contas Patrimoniais."""
     id: uuid.UUID = field(default_factory=uuid.uuid4)
     family_id: uuid.UUID
     holder_id: uuid.UUID  # Membro da família titular da conta
     nickname: str
-    bank: str = ""
-    agency: str = ""
-    account_number: str = ""
     current_balance: float = 0.0
+    account_type: AccountType = field(init=False)
+
+    def __post_init__(self):
+        if not self.family_id:
+            raise ValueError("Toda conta deve estar vinculada a uma família.")
+        if not self.holder_id:
+            raise ValueError("Toda conta deve ter um titular.")
 
     def process_transaction(self, transaction: 'Transaction'):
-        """Calcula o impacto da transação bancária apenas se ela tiver sido efetivada e pertencer a esta conta."""
-        if transaction.is_realized and transaction.bank_account_id == self.id:
-            if transaction.type == TransactionType.INCOME:
-                self.current_balance += transaction.amount
-            elif transaction.type == TransactionType.EXPENSE:
-                self.current_balance -= transaction.amount
+        """Calcula o impacto da transação de acordo com a natureza da conta (Ativo ou Passivo)."""
+        if transaction.is_realized and transaction.account_id == self.id:
+            if self.account_type == AccountType.ASSET:
+                if transaction.type in (TransactionType.INCOME, TransactionType.TRANSFER_IN):
+                    self.current_balance += transaction.amount
+                elif transaction.type in (TransactionType.EXPENSE, TransactionType.TRANSFER_OUT):
+                    self.current_balance -= transaction.amount
+            elif self.account_type == AccountType.LIABILITY:
+                # Passivos: O saldo representa uma dívida.
+                if transaction.type in (TransactionType.EXPENSE, TransactionType.TRANSFER_OUT):
+                    self.current_balance += transaction.amount
+                elif transaction.type in (TransactionType.INCOME, TransactionType.TRANSFER_IN):
+                    self.current_balance -= transaction.amount
+            
+            self._validate_balance_invariants()
+            
+    @abstractmethod
+    def _validate_balance_invariants(self):
+        """Gancho para as subclasses implementarem regras de consistência de saldo."""
+        pass
 
 
 @dataclass(kw_only=True)
-class CreditCard:
-    """Contrato limite de crédito (cartão de crédito) junto à instituição financeira."""
-    id: uuid.UUID = field(default_factory=uuid.uuid4)
-    family_id: uuid.UUID
-    holder_id: uuid.UUID  # Quem é o responsável legal do cartão (Member)
-    nickname: str  
+class BankAccount(Account):
+    """Uma conta corrente ou poupança em banco ou fintech (Ativo)."""
+    bank: str = ""
+    agency: str = ""
+    account_number: str = ""
+
+    def __post_init__(self):
+        self.account_type = AccountType.ASSET
+        super().__post_init__()
+        if not self.bank or not self.bank.strip():
+            raise ValueError("O nome do banco (bank) é obrigatório para uma BankAccount.")
+
+    def _validate_balance_invariants(self):
+        pass
+
+    @classmethod
+    def create(cls, *, family_id: uuid.UUID, holder_id: uuid.UUID, holder_name: str, 
+               bank: str, agency: str = "", account_number: str = "", nickname: Optional[str] = None) -> 'BankAccount':
+        """Método de Fábrica que encapsula a regra de criação e apelido padrão."""
+        if not nickname or not nickname.strip():
+            primeiro_nome = holder_name.split()[0] if holder_name else ''
+            if primeiro_nome:
+                nickname = f"{bank} ({primeiro_nome})"
+            else:
+                nickname = bank
+
+        return cls(
+            family_id=family_id,
+            holder_id=holder_id,
+            nickname=nickname,
+            bank=bank,
+            agency=agency,
+            account_number=account_number
+        )
+
+
+@dataclass(kw_only=True)
+class CashAccount(Account):
+    """Conta para dinheiro em espécie (Ativo)."""
+    
+    def __post_init__(self):
+        self.account_type = AccountType.ASSET
+        super().__post_init__()
+        self._validate_balance_invariants()
+
+    def _validate_balance_invariants(self):
+        if self.current_balance < 0:
+            raise ValueError("A conta de dinheiro em espécie não pode ter saldo negativo.")
+
+
+@dataclass(kw_only=True)
+class CreditCard(Account):
+    """Contrato limite de crédito (cartão de crédito) junto à instituição financeira (Passivo)."""
     issuer: Optional[str] = None  # Emissor - quem forneceu o cartão (Banco ou fintech)
     brand: str  # Bandeira do cartão (VISA, Mastercard, Elo, etc)
     tier: Optional[str] = None  # Nível do cartão (Gold, Platinum, Black, etc)
     limit: float
     due_day: int  # Dia do mês estipulado para o vencimento da fatura (1 a 31)
     bank_account_id: Optional[uuid.UUID] = None  # Conta a qual o cartão é vinculado
+
+    def __post_init__(self):
+        self.account_type = AccountType.LIABILITY
+        super().__post_init__()
+
+    def _validate_balance_invariants(self):
+        pass
+
+
+@dataclass(kw_only=True)
+class TabAccount(Account):
+    """Conta para despesas no modo fiado/caderneta (Passivo)."""
+    
+    def __post_init__(self):
+        self.account_type = AccountType.LIABILITY
+        super().__post_init__()
+
+    def _validate_balance_invariants(self):
+        pass
 
 
 @dataclass(kw_only=True)
@@ -128,8 +237,10 @@ class Transaction:
     is_realized: bool = None  # Define se o fluxo realmente acorreu no banco ou se é previsão pendente
     ignore_in_family_balance: bool = False  # Evita a dupla contabilização (Ex: pagamento da fatura do cartão)
 
-    # Campos opcionais de rastreabilidade do instrumento financeiro:
-    bank_account_id: Optional[uuid.UUID] = None
+    # Vínculo com a conta raiz (Bancária, Caixa, Cartão ou Fiado)
+    account_id: Optional[uuid.UUID] = None
+
+    # Campos opcionais de rastreabilidade de instrumentos acessórios:
     card_instance_id: Optional[uuid.UUID] = None
     credit_card_bill_id: Optional[uuid.UUID] = None
     

@@ -48,19 +48,14 @@ class FinancialService:
         if member.family_id != dto.family_id:
             raise ValueError("Incoerência sistêmica: O titular fornecido não pertence à família selecionada.")
 
-        nickname = dto.nickname
-        if not nickname or nickname.strip() == "":
-            primeiro_nome = member.name.split()[0] if member.name else "Membro"
-            banco = dto.bank if dto.bank else "Banco"
-            nickname = f"{banco} ({primeiro_nome})"
-
-        account = BankAccount(
+        account = BankAccount.create(
             family_id=dto.family_id,
             holder_id=dto.holder_id,
-            nickname=nickname,
+            holder_name=member.name,
             bank=dto.bank,
             agency=dto.agency,
-            account_number=dto.account_number
+            account_number=dto.account_number,
+            nickname=dto.nickname
         )
         self._bank_account_repo.save(account)
         return account
