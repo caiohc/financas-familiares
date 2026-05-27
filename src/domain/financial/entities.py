@@ -33,16 +33,6 @@ class Family:
         if not self.name or not self.name.strip():
             raise ValueError("Nome da família é obrigatório.")
 
-    def process_transaction(self, transaction: 'Transaction'):
-        """Domínio Rico: O próprio objeto atualiza seu saldo cumulativo interpretando a Transação."""
-        if (transaction.is_realized and transaction.family_id == self.id
-                and not transaction.ignore_in_family_balance):
-            # Transferências não alteram o patrimônio líquido global da família
-            if transaction.type == TransactionType.INCOME:
-                self.current_balance += transaction.amount
-            elif transaction.type == TransactionType.EXPENSE:
-                self.current_balance -= transaction.amount
-
 
 @dataclass(kw_only=True)
 class Member:
@@ -60,21 +50,6 @@ class Member:
 
 
 @dataclass(kw_only=True)
-class Category:
-    """Categoria para organização do orçamento.
-    As transações são agrupadas por categorias (Ex: Alimentação, Lazer)."""
-    id: uuid.UUID = field(default_factory=uuid.uuid4)
-    name: str
-    type: TransactionType
-
-    def __post_init__(self):
-        if not self.name or not self.name.strip():
-            raise ValueError("Nome da categoria é obrigatório.")
-        if not self.type:
-            raise ValueError("Tipo da categoria é obrigatório.")
-
-
-@dataclass(kw_only=True)
 class Account(ABC):
     """Superclasse abstrata para Contas Patrimoniais."""
     id: uuid.UUID = field(default_factory=uuid.uuid4)
@@ -89,23 +64,6 @@ class Account(ABC):
             raise ValueError("Toda conta deve estar vinculada a uma família.")
         if not self.holder_id:
             raise ValueError("Toda conta deve ter um titular.")
-
-    def process_transaction(self, transaction: 'Transaction'):
-        """Calcula o impacto da transação de acordo com a natureza da conta (Ativo ou Passivo)."""
-        if transaction.is_realized and transaction.account_id == self.id:
-            if self.account_type == AccountType.ASSET:
-                if transaction.type in (TransactionType.INCOME, TransactionType.TRANSFER_IN):
-                    self.current_balance += transaction.amount
-                elif transaction.type in (TransactionType.EXPENSE, TransactionType.TRANSFER_OUT):
-                    self.current_balance -= transaction.amount
-            elif self.account_type == AccountType.LIABILITY:
-                # Passivos: O saldo representa uma dívida.
-                if transaction.type in (TransactionType.EXPENSE, TransactionType.TRANSFER_OUT):
-                    self.current_balance += transaction.amount
-                elif transaction.type in (TransactionType.INCOME, TransactionType.TRANSFER_IN):
-                    self.current_balance -= transaction.amount
-            
-            self._validate_balance_invariants()
             
     @abstractmethod
     def _validate_balance_invariants(self):
@@ -163,23 +121,22 @@ class CashAccount(Account):
         if self.current_balance < 0:
             raise ValueError("A conta de dinheiro em espécie não pode ter saldo negativo.")
 
+    @classmethod
+    def create(cls, *, family_id: uuid.UUID, holder_id: uuid.UUID, holder_name: str, 
+               nickname: Optional[str] = None) -> 'CashAccount':
+        """Método de Fábrica que encapsula a regra de criação e apelido padrão."""
+        if not nickname or not nickname.strip():
+            primeiro_nome = holder_name.split()[0] if holder_name else ''
+            if primeiro_nome:
+                nickname = f"Espécie ({primeiro_nome})"
+            else:
+                nickname = "Espécie"
 
-@dataclass(kw_only=True)
-class CreditCard(Account):
-    """Contrato limite de crédito (cartão de crédito) junto à instituição financeira (Passivo)."""
-    issuer: Optional[str] = None  # Emissor - quem forneceu o cartão (Banco ou fintech)
-    brand: str  # Bandeira do cartão (VISA, Mastercard, Elo, etc)
-    tier: Optional[str] = None  # Nível do cartão (Gold, Platinum, Black, etc)
-    limit: float
-    due_day: int  # Dia do mês estipulado para o vencimento da fatura (1 a 31)
-    bank_account_id: Optional[uuid.UUID] = None  # Conta a qual o cartão é vinculado
-
-    def __post_init__(self):
-        self.account_type = AccountType.LIABILITY
-        super().__post_init__()
-
-    def _validate_balance_invariants(self):
-        pass
+        return cls(
+            family_id=family_id,
+            holder_id=holder_id,
+            nickname=nickname
+        )
 
 
 @dataclass(kw_only=True)
@@ -193,6 +150,81 @@ class TabAccount(Account):
     def _validate_balance_invariants(self):
         pass
 
+    @classmethod
+    def create(cls, *, family_id: uuid.UUID, holder_id: uuid.UUID, holder_name: str, 
+               nickname: Optional[str] = None) -> 'TabAccount':
+        """Método de Fábrica que encapsula a regra de criação e apelido padrão."""
+        if not nickname or not nickname.strip():
+            primeiro_nome = holder_name.split()[0] if holder_name else ''
+            if primeiro_nome:
+                nickname = f"Fiado ({primeiro_nome})"
+            else:
+                nickname = "Fiado"
+
+        return cls(
+            family_id=family_id,
+            holder_id=holder_id,
+            nickname=nickname
+        )
+
+
+@dataclass(kw_only=True)
+class CreditCard(Account):
+    """Contrato limite de crédito (cartão de crédito) junto à instituição financeira (Passivo)."""
+    issuer: Optional[str] = None  # Emissor - quem forneceu o cartão (Banco ou fintech)
+    brand: str  # Bandeira do cartão (VISA, Mastercard, Elo, etc)
+    tier: Optional[str] = None  # Nível do cartão (Gold, Platinum, Black, etc)
+    limit: float = 0.0
+    due_day: Optional[int] = None  # Dia do mês estipulado para o vencimento da fatura (1 a 31)
+    bank_account_id: Optional[uuid.UUID] = None  # Conta a qual o cartão é vinculado
+
+    def __post_init__(self):
+        self.account_type = AccountType.LIABILITY
+        super().__post_init__()
+        
+        if not self.brand or not self.brand.strip():
+            raise ValueError("A bandeira do cartão de crédito deve ser informada.")
+
+        if (not self.bank_account_id or not self.holder_id) and (not self.issuer):
+            raise ValueError("Um cartão de crédito deve ter uma conta bancária vinculada ou um emissor.")
+        
+    def _validate_balance_invariants(self):
+        pass
+
+    @classmethod
+    def create(cls, *, family_id: uuid.UUID, holder_id: uuid.UUID,
+               brand: str, limit: float, due_day: int,
+               issuer: Optional[str] = None, tier: Optional[str] = None,
+               bank_account_id: Optional[uuid.UUID] = None,
+               bank_account_nickname: Optional[str] = None,
+               nickname: Optional[str] = None) -> 'CreditCard':
+        """Método de Fábrica que encapsula a regra de criação e apelidos padrão."""
+
+        # Lógica do Nickname (O issuer, se houver fallback com a BankAccount, 
+        # já deve vir preenchido pela camada de Serviço)
+        if not nickname or not nickname.strip():
+            tier_str = f" {tier.strip()}" if tier and tier.strip() else ""
+            card_part = f"{brand.strip()}{tier_str}"
+            
+            if issuer and issuer.strip():
+                nickname = f"{issuer.strip()} - {card_part}"
+            elif bank_account_nickname and bank_account_nickname.strip():
+                nickname = f"{bank_account_nickname} - {card_part}"
+            else:
+                nickname = card_part
+
+        return cls(
+            family_id=family_id,
+            holder_id=holder_id,
+            nickname=nickname,
+            issuer=issuer,
+            brand=brand,
+            tier=tier,
+            limit=limit,
+            due_day=due_day,
+            bank_account_id=bank_account_id
+        )
+
 
 @dataclass(kw_only=True)
 class CreditCardBill:
@@ -205,14 +237,6 @@ class CreditCardBill:
     is_closed: bool = False
     total_amount: float = 0.0
 
-    def process_transaction(self, transaction: 'Transaction'):
-        """Engloba despensas e estornos no domínio matemático da fatura."""
-        if transaction.credit_card_bill_id == self.id:
-            if transaction.type == TransactionType.EXPENSE:
-                self.total_amount += transaction.amount
-            elif transaction.type == TransactionType.INCOME:
-                self.total_amount -= transaction.amount
-
 
 @dataclass(kw_only=True)
 class CardInstance:
@@ -222,6 +246,21 @@ class CardInstance:
     credit_card_id: uuid.UUID
     holder_id: uuid.UUID  # Quem tem a posse deste plástico (Member ou dependente)
     nickname: str  
+
+
+@dataclass(kw_only=True)
+class Category:
+    """Categoria para organização do orçamento.
+    As transações são agrupadas por categorias (Ex: Alimentação, Lazer)."""
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
+    name: str
+    type: TransactionType
+
+    def __post_init__(self):
+        if not self.name or not self.name.strip():
+            raise ValueError("Nome da categoria é obrigatório.")
+        if not self.type:
+            raise ValueError("Tipo da categoria é obrigatório.")
 
 
 @dataclass(kw_only=True)
