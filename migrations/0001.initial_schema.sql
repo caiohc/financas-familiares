@@ -73,7 +73,7 @@ CREATE TABLE IF NOT EXISTS transactions (
     amount REAL, 
     description TEXT, 
     date TEXT, 
-    is_realized INTEGER, 
+    is_forecast INTEGER, 
     bank_account_id TEXT, 
     credit_card_id TEXT, 
     card_instance_id TEXT, 

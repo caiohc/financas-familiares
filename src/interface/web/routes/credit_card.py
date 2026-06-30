@@ -1,4 +1,5 @@
 import uuid
+from decimal import Decimal
 from flask import Blueprint, render_template, request, redirect, url_for, current_app
 from application.dtos.financial_dtos import CreateCreditCardDTO, CreateCardInstanceDTO
 
@@ -47,7 +48,7 @@ def create():
                     nickname=nickname if nickname else None,
                     issuer=issuer if issuer else None,
                     brand=brand,
-                    limit=float(limit_str),
+                    limit=Decimal(limit_str),
                     due_day=int(due_day_str),
                     bank_account_id=uuid.UUID(bank_account_id_str) if bank_account_id_str else None
                 )
@@ -91,7 +92,7 @@ def update(card_id):
                     nickname, 
                     issuer,
                     brand, 
-                    float(limit_str), 
+                    Decimal(limit_str), 
                     int(due_day_str), 
                     final_bank_account_id
                 )

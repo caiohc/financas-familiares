@@ -1,6 +1,7 @@
 import uuid
 from dataclasses import dataclass
 from typing import Optional
+from decimal import Decimal
 
 @dataclass(kw_only=True)
 class CreateBankAccountDTO:
@@ -20,7 +21,7 @@ class CreateCreditCardDTO:
     nickname: Optional[str] = None
     issuer: Optional[str] = None
     brand: str
-    limit: float
+    limit: Decimal
     due_day: int
     bank_account_id: Optional[uuid.UUID] = None
 
@@ -43,7 +44,7 @@ class CreateTransactionDTO:
     category_id: uuid.UUID
     type_str: str  # "INCOME" ou "EXPENSE"
     date: 'datetime.date'
-    amount: float
+    amount: Decimal
     description: str
     
     bank_account_id: Optional[uuid.UUID] = None

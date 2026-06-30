@@ -1,4 +1,5 @@
 import uuid
+from decimal import Decimal
 
 from application.dtos.financial_dtos import (
     CreateBankAccountDTO,
@@ -184,7 +185,7 @@ class FinancialService:
             raise ValueError(f"Cartão de Crédito {card_id} não encontrado.")
         return card
 
-    def update_credit_card(self, card_id: uuid.UUID, nickname: str, issuer: str, brand: str, limit: float, due_day: int, bank_account_id: uuid.UUID = None) -> CreditCard:
+    def update_credit_card(self, card_id: uuid.UUID, nickname: str, issuer: str, brand: str, limit: Decimal, due_day: int, bank_account_id: uuid.UUID = None) -> CreditCard:
         card = self.get_credit_card(card_id)
         
         bank_account = None

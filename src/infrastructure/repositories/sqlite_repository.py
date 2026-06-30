@@ -418,13 +418,13 @@ class TransactionSQLiteRepository(TransactionRepository):
             conn.execute(
                 '''INSERT INTO transactions (
                     id, family_id, category_id, type_str, amount, description, 
-                    date, is_realized, bank_account_id, credit_card_id, card_instance_id, 
+                    date, is_forecast, bank_account_id, credit_card_id, card_instance_id, 
                     credit_card_bill_id, installment_current, installment_total
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(id) DO UPDATE SET is_realized=excluded.is_realized''',
+                ON CONFLICT(id) DO UPDATE SET is_forecast=excluded.is_forecast''',
                 (
                     str(t.id), str(t.family_id), str(t.category_id), t.type.value, t.amount, t.description,
-                    str(t.date), 1 if t.is_realized else 0,
+                    str(t.date), 1 if t.is_forecast else 0,
                     str(t.bank_account_id) if t.bank_account_id else None,
                     str(t.credit_card_id) if t.credit_card_id else None,
                     str(t.card_instance_id) if t.card_instance_id else None,
@@ -458,7 +458,7 @@ class TransactionSQLiteRepository(TransactionRepository):
 
     def _map_row(self, row) -> Transaction:
         year, month, day = map(int, row['date'].split('-'))
-        realized = True if row['is_realized'] == 1 else False if row['is_realized'] == 0 else None
+        forecast = True if row['is_forecast'] == 1 else False if row['is_forecast'] == 0 else False
         
         t = Transaction(
             family_id=uuid.UUID(row['family_id']),
@@ -467,7 +467,7 @@ class TransactionSQLiteRepository(TransactionRepository):
             date=datetime.date(year, month, day),
             amount=row['amount'],
             description=row['description'],
-            is_realized=realized,
+            is_forecast=forecast,
             bank_account_id=uuid.UUID(row['bank_account_id']) if row['bank_account_id'] else None,
             credit_card_id=uuid.UUID(row['credit_card_id']) if row['credit_card_id'] else None,
             card_instance_id=uuid.UUID(row['card_instance_id']) if row['card_instance_id'] else None,
