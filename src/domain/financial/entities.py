@@ -4,6 +4,7 @@ Subdomínio Financeiro (Orçamento e Organização Familiar)
 
 from decimal import Decimal
 import uuid
+import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import date
@@ -188,7 +189,7 @@ class CreditCardBill:
             raise ValueError("A fatura deve estar associada a uma família.")
         if not self.credit_card_id:
             raise ValueError("A fatura deve estar associada a um contrato de cartão de crédito.")
-        if not self.reference_month or not isinstance(self.reference_month, str) or len(self.reference_month) != 7 or self.reference_month[4] != '-':
+        if not self.reference_month or not isinstance(self.reference_month, str) or not re.match(r"^\d{4}-(0[1-9]|1[0-2])$", self.reference_month):
             raise ValueError("O mês de referência deve ser informado no formato YYYY-MM.")
         if not self.due_date:
             raise ValueError("A data de vencimento da fatura deve ser informada.")
@@ -293,3 +294,57 @@ class Transfer:
         )
         return out_tx, in_tx
 
+
+@dataclass(kw_only=True)
+class MonthlyBalance:
+    """O registro do saldo de uma conta ao final de um período (mensal)."""
+    id: uuid.UUID = field(default_factory=uuid.uuid4)
+    account_id: uuid.UUID
+    reference_month: str  # Ex: '2026-04'
+    real_balance: Decimal = Decimal('0.00')
+    projected_balance: Decimal = Decimal('0.00')
+
+    def __post_init__(self):
+        if not self.account_id:
+            raise ValueError("O registro de saldo mensal deve estar associado a uma conta.")
+        if not self.reference_month or not isinstance(self.reference_month, str) or not re.match(r"^\d{4}-(0[1-9]|1[0-2])$", self.reference_month):
+            raise ValueError("O mês de referência deve ser informado no formato YYYY-MM.")
+        if self.real_balance is None or self.projected_balance is None:
+            raise ValueError("O registro de saldo mensal deve ter os valores real e projetado.")
+
+    @classmethod
+    def create_from_history(
+        cls, 
+        account_id: uuid.UUID, 
+        month: str, 
+        previous_real_balance: Decimal, 
+        previous_projected_balance: Decimal,
+        transactions: list[Transaction]
+    ) -> 'MonthlyBalance':
+        """
+        Factory method que encapsula a regra de negócio do cálculo do saldo.
+        A partir de um saldo inicial, soma as receitas e subtrai as despesas.
+        Calcula separadamente o saldo real e o saldo projetado (que inclui previsões).
+        """
+        new_real = previous_real_balance
+        new_projected = previous_projected_balance
+        
+        for tx in transactions:
+            # Transferências que saem comportam-se como despesas
+            amount = tx.amount
+            if tx.type in (TransactionType.EXPENSE, TransactionType.TRANSFER_OUT):
+                amount = -amount
+
+            # O saldo projetado sempre recebe a transação (seja real ou previsão)
+            new_projected += amount
+            
+            # O saldo real só recebe a transação se ela NÃO for previsão
+            if not tx.is_forecast:
+                new_real += amount
+                
+        return cls(
+            account_id=account_id,
+            reference_month=month,
+            real_balance=new_real,
+            projected_balance=new_projected
+        )
