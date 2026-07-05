@@ -182,6 +182,8 @@ class CreditCardBill:
     reference_month: str  # Formato YYYY-MM (Ex: 2026-04)
     due_date: date  # Dia exato do vencimento nesse mês específico
     is_closed: bool = False
+    previous_balance: Decimal = Decimal('0.00')  # Saldo devedor herdado da fatura anterior
+    payments_received: Decimal = Decimal('0.00')  # Pagamentos realizados entre o fechamento da anterior e desta
     total_amount: Decimal = Decimal('0.00')
 
     def __post_init__(self):
@@ -193,6 +195,36 @@ class CreditCardBill:
             raise ValueError("O mês de referência deve ser informado no formato YYYY-MM.")
         if not self.due_date:
             raise ValueError("A data de vencimento da fatura deve ser informada.")
+
+    @classmethod
+    def calculate_total(cls, 
+                        family_id: uuid.UUID,
+                        credit_card_id: uuid.UUID,
+                        month: str, 
+                        due_date: date,
+                        previous_balance: Decimal,
+                        payments_received: Decimal,
+                        transactions: list['Transaction']) -> 'CreditCardBill':
+        
+        # O total da fatura atual começa com o que sobrou do mês passado
+        total = previous_balance - payments_received
+        
+        # Soma as novas transações que caíram nesta fatura
+        for tx in transactions:
+            if tx.type in (TransactionType.EXPENSE, TransactionType.TRANSFER_OUT):
+                total += tx.amount
+            elif tx.type in (TransactionType.INCOME, TransactionType.TRANSFER_IN):
+                total -= tx.amount
+                
+        return cls(
+            family_id=family_id,
+            credit_card_id=credit_card_id,
+            reference_month=month,
+            due_date=due_date,
+            previous_balance=previous_balance,
+            payments_received=payments_received,
+            total_amount=total
+        )
 
 
 @dataclass(kw_only=True)
