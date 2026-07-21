@@ -1,7 +1,7 @@
 from decimal import Decimal
 import uuid
 import pytest
-from domain.financial.entities import Family
+from domain.family.entities import Family
 
 def test_family_creation_success():
 

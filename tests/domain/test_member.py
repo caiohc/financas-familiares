@@ -1,6 +1,6 @@
 import uuid
 import pytest
-from domain.financial.entities import Member
+from domain.family.entities import Member
 
 def test_member_creation_success():
 
