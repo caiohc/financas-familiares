@@ -88,8 +88,9 @@ class Wallet(Account):
 
    
 @dataclass(kw_only=True)
-class Tab(Account):
-    """Conta para despesas no modo fiado/caderneta (Passivo)."""
+class AccountsPayable(Account):
+    """Conta que consolida todas as obrigações a pagar a curto prazo (Passivo/Contas a Pagar).
+    Pode representar tanto um credor informal (Fiado) quanto uma 'Piscina' de boletos formais."""
     account_type: AccountType = field(default=AccountType.LIABILITY, init=False)
 
     def _validate_balance_invariants(self):
@@ -219,7 +220,8 @@ class Transaction:
     family_id: uuid.UUID
     category_id: uuid.UUID
     type: TransactionType
-    date: date  # Data do fluxo  caixa efetivo (quando o dinheiro sai da conta ou a data de vencimento da fatura do cartão)
+    purchase_date: date  # Data do fato gerador (competência/DRE)
+    due_date: date       # Data de vencimento (expectativa de fluxo de caixa)
     amount: Decimal
     description: str
     is_forecast: bool = False  # Define se o fluxo é apenas uma previsão futura (orçamento)
@@ -231,6 +233,7 @@ class Transaction:
     card_instance_id: Optional[uuid.UUID] = None
     credit_card_bill_id: Optional[uuid.UUID] = None
     transfer_id: Optional[uuid.UUID] = None
+    settled_by_transfer_id: Optional[uuid.UUID] = None  # Aponta para a Transferência que pagou esta transação (Conciliação/Baixa)
     
     # Controle matemático de parcelas
     installment_current: int = 1
@@ -243,8 +246,10 @@ class Transaction:
             raise ValueError("A transação deve ter uma categoria.")
         if not self.type:
             raise ValueError("A transação deve ter um tipo.")
-        if not self.date:
-            raise ValueError("A transação deve ter uma data.")
+        if not self.purchase_date:
+            raise ValueError("A transação deve ter uma data de compra/competência (purchase_date).")
+        if not self.due_date:
+            raise ValueError("A transação deve ter uma data de vencimento (due_date).")
         if self.amount is None:
             raise ValueError("A transação deve ter um valor.")
         if not self.description or not self.description.strip():
@@ -278,7 +283,8 @@ class Transfer:
             account_id=self.source_account_id,
             category_id=category_id,
             type=TransactionType.TRANSFER_OUT,
-            date=self.date,
+            purchase_date=self.date,
+            due_date=self.date,
             amount=self.amount,
             description=self.description or "Transferência enviada",
             transfer_id=self.id
@@ -289,7 +295,8 @@ class Transfer:
             account_id=self.destination_account_id,
             category_id=category_id,
             type=TransactionType.TRANSFER_IN,
-            date=self.date,
+            purchase_date=self.date,
+            due_date=self.date,
             amount=self.amount,
             description=self.description or "Transferência recebida",
             transfer_id=self.id

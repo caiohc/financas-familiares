@@ -59,24 +59,31 @@ def test_credit_card_bill_calculate_total():
     # Novas despesas na fatura atual
     tx1 = Transaction(
         family_id=fam_id, account_id=acc_id, category_id=cat_id, 
-        type=TransactionType.EXPENSE, date=date(2026, 5, 10), 
+        type=TransactionType.EXPENSE, purchase_date=date(2026, 5, 10), due_date=date(2026, 6, 10), 
         amount=Decimal('100.00'), description="Mercado"
     )
     
     tx2 = Transaction(
         family_id=fam_id, account_id=acc_id, category_id=cat_id, 
-        type=TransactionType.EXPENSE, date=date(2026, 5, 15), 
+        type=TransactionType.EXPENSE, purchase_date=date(2026, 5, 15), due_date=date(2026, 6, 10), 
         amount=Decimal('50.00'), description="Uber"
     )
     
     # Juros adicionados pelo banco (também é uma despesa)
     tx3 = Transaction(
         family_id=fam_id, account_id=acc_id, category_id=cat_id, 
-        type=TransactionType.EXPENSE, date=date(2026, 5, 20), 
+        type=TransactionType.EXPENSE, purchase_date=date(2026, 5, 20), due_date=date(2026, 6, 10), 
         amount=Decimal('15.00'), description="Juros de mora"
     )
+
+    # Estorno de compra (Entra como receita na fatura)
+    tx4 = Transaction(
+        family_id=fam_id, account_id=acc_id, category_id=cat_id, 
+        type=TransactionType.INCOME, purchase_date=date(2026, 5, 22), due_date=date(2026, 6, 10), 
+        amount=Decimal('20.00'), description="Estorno Mercado Livre"
+    )
     
-    transactions = [tx1, tx2, tx3]
+    transactions = [tx1, tx2, tx3, tx4]
     
     bill = CreditCardBill.calculate_total(
         family_id=fam_id,
@@ -88,9 +95,9 @@ def test_credit_card_bill_calculate_total():
         transactions=transactions
     )
     
-    # Matemática: (1000 - 400) + 100 + 50 + 15 = 765
+    # Matemática: (1000 - 400) + 100 + 50 + 15 - 20 = 745
     assert bill.previous_balance == Decimal('1000.00')
     assert bill.payments_received == Decimal('400.00')
-    assert bill.total_amount == Decimal('765.00')
+    assert bill.total_amount == Decimal('745.00')
     assert bill.reference_month == "2026-05"
     assert bill.due_date == date(2026, 6, 10)
