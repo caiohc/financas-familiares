@@ -234,10 +234,13 @@ class Transaction:
     credit_card_bill_id: Optional[uuid.UUID] = None
     transfer_id: Optional[uuid.UUID] = None
     settled_by_transfer_id: Optional[uuid.UUID] = None  # Aponta para a Transferência que pagou esta transação (Conciliação/Baixa)
+    source_transaction_id: Optional[str] = None  # ID originário do extrato do banco/cartão para evitar duplicação (idempotência)
+    cost_center_id: Optional[uuid.UUID] = None  # Aponta para o FamilyCostCenter (Núcleo Sogra, Casa de Praia, etc)
     
     # Controle matemático de parcelas
     installment_current: int = 1
     installment_total: int = 1
+    installment_group_id: Optional[uuid.UUID] = None  # Agrupa todas as transações de uma mesma compra parcelada
 
     def __post_init__(self):
         if not self.family_id:

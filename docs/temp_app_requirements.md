@@ -6,9 +6,11 @@ Este documento guarda temporariamente os requisitos funcionais e não funcionais
 
 ### Gestão de Transações e Interface
 - O sistema deve permitir o cadastro manual e edição de transações (receitas e despesas) pelo usuário na interface.
+- **Recálculo Retroativo:** Se o usuário editar, adicionar ou remover uma transação pertencente a um mês passado, o sistema deve recalcular automaticamente o snapshot de saldo (`MonthlyBalance`) daquele mês e propagar as alterações para os meses subsequentes, garantindo que o fechamento nunca fique dessincronizado com o histórico de transações.
 
 ### Importação, Classificação Automática e IA
 - O usuário poderá realizar upload de extratos bancários e faturas de cartão.
+- **Upload Idempotente (Deduplicação Automática):** O usuário poderá realizar o upload de extratos parciais com sobreposição de datas ou upload do mesmo extrato várias vezes. O sistema utilizará identificadores de origem (IDs da transação no banco/cartão) para ignorar transações já cadastradas, identificando univocamente as transações da fonte.
 - O sistema deve integrar-se com serviços de OCR e IA para extrair dados digitais e auto-classificar transações.
 
 ## 2. Requisitos Não Funcionais

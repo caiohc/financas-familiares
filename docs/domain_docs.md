@@ -30,6 +30,7 @@ Para garantir que o sistema não sofra problemas arquiteturais comuns a aplicati
 ### 2.2. Estrutura Organizacional e Instrumentos
 
 - **Multi-Tenancy:** A estrutura do domínio baseia-se em suportar múltiplas Famílias e Membros independentes.
+- **Centros de Custo (Subfamílias/Propriedades):** A entidade `FamilyCostCenter` permite que transações sejam alocadas a um agrupador lógico (ex: "Núcleo Sogra", "Casa de Praia", "Filho"), permitindo a geração de relatórios de DRE e Fluxo de Caixa individuais para o centro de custo sem violar a liquidez global da conta bancária da família.
 - **Cartões e Faturas:** O domínio garante que múltiplas instâncias de cartão rodam sobre o mesmo limite, compilando-se matematicamente em Faturas Mensais (`CreditCardBill`).
 
 ### 2.3. Requisitos Não Funcionais do Domínio
@@ -61,6 +62,14 @@ Para facilitar a compreensão do comportamento estrito do domínio (sem levar em
 **Exemplo:** Maria vai ao supermercado e gasta R$ 150 pagando via Pix do Itaú.
 **Classes:** `Transaction` (`EXPENSE`, `purchase_date=Hoje`, `due_date=Hoje`, `account_id=Itaú`). Entra imediatamente no DRE e reduz o Fluxo de Caixa. (O Patrimônio Líquido vai para R$ 4.850,00).
 
+| Conta | Tipo | Saldo Atual | Histórico |
+|---|---|---|---|
+| Itaú | Ativo | R$ 4.650,00 | - R$ 150,00 (Supermercado) |
+| Carteira | Ativo | R$ 200,00 | - |
+| Nubank | Passivo | R$ 0,00 | - |
+| Contas a Pagar | Passivo | R$ 0,00 | - |
+| **Geral** | **Patrimônio**| **R$ 4.850,00** | R$ 4.850,00 (Ativos) - R$ 0,00 (Passivos) |
+
 ### UC02.5: Gasto Diferido (Boleto Futuro / Conta a Pagar)
 **Resumo:** O fato gerador e o desembolso ocorrem em momentos distintos.
 **Exemplo:** João recebe um boleto do condomínio (Julho) no valor de R$ 1.000, vencimento para o mês seguinte.
@@ -68,10 +77,26 @@ Para facilitar a compreensão do comportamento estrito do domínio (sem levar em
 - `Transaction`: `EXPENSE`, `account_id=AccountsPayable`, `purchase_date=Julho`, `due_date=10 de Agosto`, `settled_by_transfer_id=None` (Não Pago).
 - **Comportamento:** O DRE de Julho absorve a despesa. O Patrimônio de Julho cai para R$ 3.850,00 devido à dívida recém-criada no Passivo, embora o dinheiro no banco permaneça intacto.
 
+| Conta | Tipo | Saldo Atual | Histórico |
+|---|---|---|---|
+| Itaú | Ativo | R$ 4.650,00 | - |
+| Carteira | Ativo | R$ 200,00 | - |
+| Nubank | Passivo | R$ 0,00 | - |
+| Contas a Pagar | Passivo | - R$ 1.000,00 | - R$ 1.000,00 (Boleto Condomínio) |
+| **Geral** | **Patrimônio**| **R$ 3.850,00** | R$ 4.850,00 (Ativos) - R$ 1.000,00 (Passivos) |
+
 ### UC03: Compra no Cartão de Crédito
 **Resumo:** Gasto gerador de passivo atrelado a ciclo futuro de fatura.
 **Exemplo:** João compra um micro-ondas de R$ 500 no Nubank.
 **Classes:** `CreditCardBill` e `Transaction` (`EXPENSE`, R$ 500 no Nubank). Entra no DRE, aumenta o passivo para R$ 500. Patrimônio cai para R$ 3.350,00.
+
+| Conta | Tipo | Saldo Atual | Histórico |
+|---|---|---|---|
+| Itaú | Ativo | R$ 4.650,00 | - |
+| Carteira | Ativo | R$ 200,00 | - |
+| Nubank | Passivo | - R$ 500,00 | - R$ 500,00 (Micro-ondas) |
+| Contas a Pagar | Passivo | - R$ 1.000,00 | - |
+| **Geral** | **Patrimônio**| **R$ 3.350,00** | R$ 4.850,00 (Ativos) - R$ 1.500,00 (Passivos) |
 
 ### UC04: Quitação (Clearing) de Conta a Pagar / Boleto
 **Resumo:** Pagamento de uma dívida consolidada (passivo).
@@ -82,28 +107,52 @@ Para facilitar a compreensão do comportamento estrito do domínio (sem levar em
 
 | Conta | Tipo | Saldo Atual | Histórico |
 |---|---|---|---|
-| Itaú | Ativo | R$ 2.650,00 | - R$ 1.000 (Pagto Condomínio) |
+| Itaú | Ativo | R$ 3.650,00 | - R$ 1.000,00 (Pagto Condomínio) |
 | Carteira | Ativo | R$ 200,00 | - |
-| Nubank | Passivo | - R$ 500,00 | - R$ 500 (Micro-ondas) |
-| Contas a Pagar | Passivo | R$ 0,00 | - R$ 1.000 (Boleto Condomínio) <br> + R$ 1.000 (Recebimento Itaú) |
-| **Geral** | **Patrimônio**| **R$ 2.850,00** | R$ 3.350,00 (Ativos) - R$ 500,00 (Passivos) |
+| Nubank | Passivo | - R$ 500,00 | - |
+| Contas a Pagar | Passivo | R$ 0,00 | + R$ 1.000,00 (Recebimento Itaú) |
+| **Geral** | **Patrimônio**| **R$ 3.350,00** | R$ 3.850,00 (Ativos) - R$ 500,00 (Passivos) |
 
 ### UC05: Pagamento Total de Fatura de Cartão
 **Resumo:** Movimentação de liquidez (Ativo para Passivo).
 **Exemplo:** Chega o dia do vencimento e João paga a fatura completa do Nubank (R$ 500) usando o Itaú.
-**Classes:** `Transfer` (Itaú -> Nubank). O pagamento **não** gera despesa extra. A fatura recebe `is_closed=True`. Saldo do Itaú cai para R$ 2.150 e Nubank zera. Patrimônio Líquido se mantém em R$ 2.850,00.
+**Classes:** `Transfer` (Itaú -> Nubank). O pagamento **não** gera despesa extra. A fatura recebe `is_closed=True`. Saldo do Itaú cai para R$ 3.150 e Nubank zera. Patrimônio Líquido se mantém em R$ 3.350,00.
+
+| Conta | Tipo | Saldo Atual | Histórico |
+|---|---|---|---|
+| Itaú | Ativo | R$ 3.150,00 | - R$ 500,00 (Pagto Fatura Nubank) |
+| Carteira | Ativo | R$ 200,00 | - |
+| Nubank | Passivo | R$ 0,00 | + R$ 500,00 (Recebimento Itaú) |
+| Contas a Pagar | Passivo | R$ 0,00 | - |
+| **Geral** | **Patrimônio**| **R$ 3.350,00** | R$ 3.350,00 (Ativos) - R$ 0,00 (Passivos) |
 
 ### UC06: Juros e Multas
 **Resumo:** Injeção de custos financeiros sobre atrasos em Passivos.
-**Exemplo:** Se João atrasasse o boleto de condomínio e recebesse um novo boleto de R$ 1.050.
-**Classes:** Uma nova `Transaction` de `EXPENSE` no valor de R$ 50 (Categoria Juros/Multa) seria inserida na conta `AccountsPayable`. O passivo total bateria R$ 1.050. Ao realizar a `Transfer` de pagamento total, R$ 1.050 sairiam do banco, zerando matematicamente o passivo.
+**Exemplo:** João esquece de pagar um boleto de Internet de R$ 100, gerando uma multa de R$ 10. Ele paga o total de R$ 110 usando o Itaú.
+**Classes:** Uma nova `Transaction` de `EXPENSE` no valor de R$ 10 (Categoria Juros/Multa) é inserida junto à original de R$ 100 na conta `AccountsPayable`. O passivo bate R$ -110. Ao realizar a `Transfer` de pagamento, R$ 110 saem do Itaú, zerando matematicamente o passivo.
+
+| Conta | Tipo | Saldo Atual | Histórico |
+|---|---|---|---|
+| Itaú | Ativo | R$ 3.040,00 | - R$ 110,00 (Pagto Boleto + Multa) |
+| Carteira | Ativo | R$ 200,00 | - |
+| Nubank | Passivo | R$ 0,00 | - |
+| Contas a Pagar | Passivo | R$ 0,00 | - R$ 100 (Boleto) - R$ 10 (Multa) + R$ 110 (Pagto Itaú) |
+| **Geral** | **Patrimônio**| **R$ 3.240,00** | R$ 3.240,00 (Ativos) - R$ 0,00 (Passivos) |
 
 ### UC07: Injeção de Orçamento (Gastos Previstos)
 **Resumo:** Projeção de fluxo de caixa futuro.
 **Exemplo:** João anota que vai gastar R$ 200 em gasolina na semana que vem.
 **Classes:** `Transaction` (`is_forecast=True`). 
-- **Comportamento:** Altera exclusivamente os **saldos projetados**. O saldo real contábil não muda, garantindo conciliação imediata com extratos bancários. Se o dia passar e ele não alterar a transação, o sistema avisa: "Previsão Obsoleta".
+- **Comportamento:** Altera exclusivamente os **saldos projetados**. O **saldo real contábil não muda**, garantindo conciliação imediata com extratos bancários. A tabela de saldos reais abaixo permanece inalterada em relação ao passo anterior.
+
+| Conta | Tipo | Saldo Real | Saldo Projetado (Futuro) |
+|---|---|---|---|
+| Itaú | Ativo | R$ 3.040,00 | R$ 2.840,00 (- R$ 200 de Gasolina) |
+| Carteira | Ativo | R$ 200,00 | R$ 200,00 |
+| Nubank | Passivo | R$ 0,00 | R$ 0,00 |
+| Contas a Pagar | Passivo | R$ 0,00 | R$ 0,00 |
+| **Geral** | **Patrimônio**| **R$ 3.240,00** | **R$ 3.040,00** |
 
 ### UC08: Fechamento Contábil Mensal
 **Resumo:** Consolidação de saldo `O(1)`.
-**Exemplo:** Todo dia 01 do mês, o sistema salva um snapshot do saldo exato do mês encerrado para cada conta em `MonthlyBalance`. O histórico projetado do mês passado fica obsoleto (apenas leitura), e a contabilidade do mês atual começa exatamente do saldo consolidado no snapshot anterior.
+**Exemplo:** Todo dia 01 do mês, o sistema salva um snapshot do saldo exato do mês encerrado para cada conta em `MonthlyBalance` (Os exatos valores da tabela Real acima). O histórico projetado do mês passado fica obsoleto (apenas leitura), e a contabilidade do mês atual começa exatamente do saldo consolidado no snapshot anterior.

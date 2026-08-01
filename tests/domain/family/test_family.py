@@ -12,11 +12,11 @@ def test_family_creation_success():
 
 def test_family_missing_name():
 
-    with pytest.raises(ValueError, match="Nome da família.*é obrigatório"):
+    with pytest.raises(ValueError, match="Nome da família.* é obrigatório"):
         Family(name=None)
 
-    with pytest.raises(ValueError, match="Nome da família.*é obrigatório"):
+    with pytest.raises(ValueError, match="Nome da família.* é obrigatório"):
         Family(name="")
         
-    with pytest.raises(ValueError, match="Nome da família.*é obrigatório"):
+    with pytest.raises(ValueError, match="Nome da família.* é obrigatório"):
         Family(name="   ")

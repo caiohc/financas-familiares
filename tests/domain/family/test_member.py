@@ -14,16 +14,16 @@ def test_member_missing_name():
 
     fam_id = uuid.uuid4()
     
-    with pytest.raises(ValueError, match="Nome do membro.*é obrigatório"):
+    with pytest.raises(ValueError, match="Nome do membro.* é obrigatório"):
         Member(family_id=fam_id, name=None)
 
-    with pytest.raises(ValueError, match="Nome do membro.*é obrigatório"):
+    with pytest.raises(ValueError, match="Nome do membro.* é obrigatório"):
         Member(family_id=fam_id, name="")   
 
-    with pytest.raises(ValueError, match="Nome do membro.*é obrigatório"):
+    with pytest.raises(ValueError, match="Nome do membro.* é obrigatório"):
         Member(family_id=fam_id, name="   ")   
 
 def test_member_missing_family():
 
-    with pytest.raises(ValueError, match="Membro.*deve pertencer a uma família.*"):
+    with pytest.raises(ValueError, match="Membro.* deve pertencer a uma família.*"):
         Member(family_id=None, name="João")

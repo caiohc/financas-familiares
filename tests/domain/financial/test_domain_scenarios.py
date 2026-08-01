@@ -109,13 +109,14 @@ def test_scenario_3_credit_card_installments():
     
     # Compra de R$ 1200 em 6x (R$ 200/mês) iniciada em Janeiro
     installments = []
+    group_id = uuid.uuid4()
     for i in range(1, 7):
         installments.append(
             Transaction(
                 family_id=fam.id, account_id=cc.id, category_id=cat_exp.id,
                 type=TransactionType.EXPENSE, purchase_date=date(2026, 1, 10), due_date=date(2026, i, 10),
                 amount=Decimal('200.00'), description=f"TV {i}/6",
-                installment_current=i, installment_total=6
+                installment_current=i, installment_total=6, installment_group_id=group_id
             )
         )
     
