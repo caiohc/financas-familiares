@@ -10,8 +10,8 @@ Para garantir que o sistema não sofra problemas arquiteturais comuns a aplicati
 
 - **Conta (Ativos e Passivos):** O sistema divide o dinheiro em duas naturezas. **Ativos** (`ASSET`) representam o dinheiro que você possui (Conta Bancária, Carteira). **Passivos** (`LIABILITY`) representam as suas obrigações (Dívidas, Cartão de Crédito, Contas a Pagar). O seu Patrimônio Líquido é sempre a diferença entre Ativos e Passivos.
 - **Partidas Dobradas (Double-Entry):** Cada transação financeira impacta o sistema de forma dual. Uma receita aumenta o Ativo e aumenta o Lucro. Uma despesa paga diminui o Ativo e reduz o Lucro. Uma compra a prazo diminui o Lucro, mas em vez de diminuir o Ativo (pois o dinheiro ainda não saiu da conta bancária), ela aumenta o Passivo (dívida).
-- **Regime de Competência e DRE:** O Demonstrativo de Resultados do Exercício (DRE) responde à pergunta: *"As minhas decisões me deram lucro ou prejuízo este mês?"*. Ele é pautado pela data do fato gerador (`purchase_date`). Se você usou energia elétrica em Julho, a despesa pertence a Julho, mesmo que a conta só seja paga em Agosto.
-- **Regime de Caixa e Fluxo de Caixa:** O Relatório de Fluxo de Caixa responde à pergunta: *"Terei liquidez (dinheiro na conta) para pagar minhas obrigações?"*. Ele ignora quando a compra foi feita e foca estritamente na data de movimentação de Ativos (`Transfer.date`). 
+- **Regime de Competência e DRE:** O Demonstrativo de Resultados do Exercício (DRE) responde à pergunta: *"As minhas decisões me deram lucro ou prejuízo este mês?"*. Ele é pautado pela data do fato gerador (`accrual_date`). Se você usou energia elétrica em Julho, a despesa pertence a Julho, mesmo que a conta só seja paga em Agosto.
+- **Regime de Caixa e Fluxo de Caixa:** O Relatório de Fluxo de Caixa responde à pergunta: *"Terei liquidez (dinheiro na conta) para pagar minhas obrigações?"*. Ele foca estritamente na data de movimentação real de dinheiro dos Ativos. Isso ocorre de duas formas: através da data de liquidação de um passivo (`Transfer.date`) ou, no caso de despesas à vista (Pix, Débito) lançadas diretamente em contas de Ativo, através da data de vencimento/competência da própria transação (`due_date`/`accrual_date`).
 - **Relatório Patrimonial (Balanço):** Tira uma "fotografia" de todos os saldos no dia atual. Se uma conta venceu hoje e não foi paga, a dívida (Passivo) continua constando no seu Balanço, corroendo o seu Patrimônio Líquido até ser efetivamente quitada.
 - **Balanço Mensal (O(1)):** Estratégia computacional onde, ao fim de cada mês, o sistema "congela" o saldo real da conta em uma entidade (`MonthlyBalance`). Isso evita que um relatório de Dezembro precise somar transações desde Janeiro de 2010 para descobrir o saldo, garantindo performance $O(1)$.
 - **Conciliação e Baixa (Clearing):** Quando uma dívida (Passivo) é paga por uma conta bancária (Ativo), o dinheiro é "transferido" para a dívida (`Transfer`). Para que o sistema não perca o rastro de *qual* boleto foi pago, o processo de "Clearing" insere o ID dessa Transferência na transação original da dívida (via campo `settled_by_transfer_id`).
@@ -23,7 +23,7 @@ Para garantir que o sistema não sofra problemas arquiteturais comuns a aplicati
 ### 2.1. Regras de Negócio e Contabilidade
 
 - **Tipagem Contábil:** O domínio deve dar suporte lógico às naturezas de contas patrimoniais (Bancária/Ativo, Carteira/Ativo, Cartão de Crédito/Passivo e Contas a Pagar/Passivo).
-- **DRE vs Fluxo de Caixa:** As transações (`Transaction`) possuem duas datas fundamentais: a `purchase_date` (Data de Competência) que pauta o DRE, e a `due_date` (Data de Vencimento esperada).
+- **DRE vs Fluxo de Caixa:** As transações (`Transaction`) possuem duas datas fundamentais: a `accrual_date` (Data de Competência) que pauta o DRE, e a `due_date` (Data de Vencimento esperada).
 - **Rastreabilidade (Clearing):** Boletos e dívidas informais lançadas na conta `AccountsPayable` recebem, no momento do pagamento, o vínculo para a Transferência real que os quitou (`settled_by_transfer_id`).
 - **Previsibilidade e Convergência:** O domínio permite a identificação de previsões. Previsões não realizadas cuja data expirou perdem validade e o domínio deve refletir as informações para notificação de "Previsão Obsoleta".
 
@@ -60,7 +60,7 @@ Para facilitar a compreensão do comportamento estrito do domínio (sem levar em
 ### UC02: Gasto Corrente (Débito/Pix)
 **Resumo:** Despesa em regime de caixa imediato.
 **Exemplo:** Maria vai ao supermercado e gasta R$ 150 pagando via Pix do Itaú.
-**Classes:** `Transaction` (`EXPENSE`, `purchase_date=Hoje`, `due_date=Hoje`, `account_id=Itaú`). Entra imediatamente no DRE e reduz o Fluxo de Caixa. (O Patrimônio Líquido vai para R$ 4.850,00).
+**Classes:** `Transaction` (`EXPENSE`, `accrual_date=Hoje`, `due_date=Hoje`, `account_id=Itaú`). Entra imediatamente no DRE e reduz o Fluxo de Caixa. (O Patrimônio Líquido vai para R$ 4.850,00).
 
 | Conta | Tipo | Saldo Atual | Histórico |
 |---|---|---|---|
@@ -74,7 +74,7 @@ Para facilitar a compreensão do comportamento estrito do domínio (sem levar em
 **Resumo:** O fato gerador e o desembolso ocorrem em momentos distintos.
 **Exemplo:** João recebe um boleto do condomínio (Julho) no valor de R$ 1.000, vencimento para o mês seguinte.
 **Classes:** 
-- `Transaction`: `EXPENSE`, `account_id=AccountsPayable`, `purchase_date=Julho`, `due_date=10 de Agosto`, `settled_by_transfer_id=None` (Não Pago).
+- `Transaction`: `EXPENSE`, `account_id=AccountsPayable`, `accrual_date=Julho`, `due_date=10 de Agosto`, `settled_by_transfer_id=None` (Não Pago).
 - **Comportamento:** O DRE de Julho absorve a despesa. O Patrimônio de Julho cai para R$ 3.850,00 devido à dívida recém-criada no Passivo, embora o dinheiro no banco permaneça intacto.
 
 | Conta | Tipo | Saldo Atual | Histórico |
@@ -129,7 +129,7 @@ Para facilitar a compreensão do comportamento estrito do domínio (sem levar em
 ### UC06: Juros e Multas
 **Resumo:** Injeção de custos financeiros sobre atrasos em Passivos.
 **Exemplo:** João esquece de pagar um boleto de Internet de R$ 100, gerando uma multa de R$ 10. Ele paga o total de R$ 110 usando o Itaú.
-**Classes:** Uma nova `Transaction` de `EXPENSE` no valor de R$ 10 (Categoria Juros/Multa) é inserida junto à original de R$ 100 na conta `AccountsPayable`. O passivo bate R$ -110. Ao realizar a `Transfer` de pagamento, R$ 110 saem do Itaú, zerando matematicamente o passivo.
+**Classes:** Uma nova `Transaction` de `EXPENSE` no valor de R$ 10 (Categoria Juros/Multa) é inserida junto à original de R$ 100 na conta `AccountsPayable`. **Rastreabilidade Opcional:** Essa nova transação pode receber o ID da transação original (o boleto) no campo `originating_transaction_id`, permitindo análises ricas futuras sobre quais despesas mais geram encargos. O passivo total bate R$ -110. Ao realizar a `Transfer` de pagamento, R$ 110 saem do Itaú, zerando matematicamente o passivo (e ambos recebem o `settled_by_transfer_id`).
 
 | Conta | Tipo | Saldo Atual | Histórico |
 |---|---|---|---|
@@ -152,6 +152,11 @@ Para facilitar a compreensão do comportamento estrito do domínio (sem levar em
 | Nubank | Passivo | R$ 0,00 | R$ 0,00 |
 | Contas a Pagar | Passivo | R$ 0,00 | R$ 0,00 |
 | **Geral** | **Patrimônio**| **R$ 3.240,00** | **R$ 3.040,00** |
+
+### UC05: Fechamento e Pagamento Parcial de Fatura (CreditCardBill)
+**Resumo:** Diferente de uma conta comum onde cada transação recebe a baixa individualmente, no cartão de crédito quem recebe o pagamento é a **Fatura** (um agregador lógico). A fatura engloba as transações do mês e a dívida rolada. Se o usuário decide pagar apenas um valor parcial, a diferença torna-se a nova dívida inicial da próxima fatura.
+**Classes:** O sistema calcula o `total_amount` do `CreditCardBill` baseado no `previous_balance` e soma as despesas do mês. O pagamento é uma `Transfer` do Banco para o Cartão de Crédito. O id dessa transferência é adicionado na lista `settled_by_transfer_ids` da fatura (que suporta múltiplos pagamentos parciais). O que sobrar (Saldo devedor real final do mês) iniciará o mês seguinte.
+**Encargos de Atraso:** Se essa rolagem de dívida gerar juros no mês seguinte, a transação de juros (`Transaction`) receberá no atributo `originating_bill_id` o UUID desta fatura que gerou a penalidade. O histórico projetado do mês passado fica obsoleto (apenas leitura), e a contabilidade do mês atual começa exatamente do saldo consolidado no snapshot anterior.
 
 ### UC08: Fechamento Contábil Mensal
 **Resumo:** Consolidação de saldo `O(1)`.

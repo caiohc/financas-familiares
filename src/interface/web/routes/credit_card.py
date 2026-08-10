@@ -113,9 +113,9 @@ def create_instance():
     if request.method == 'POST':
         nickname = request.form.get('nickname')
         credit_card_id_str = request.form.get('credit_card_id')
-        holder_id_str = request.form.get('holder_id')
+        card_holder_id_str = request.form.get('holder_id') # Campo no form HTML
         
-        if credit_card_id_str and holder_id_str:
+        if credit_card_id_str and card_holder_id_str:
             try:
                 card_id = uuid.UUID(credit_card_id_str)
                 card_obj = service.get_credit_card(card_id)
@@ -123,7 +123,7 @@ def create_instance():
                 dto = CreateCardInstanceDTO(
                     family_id=card_obj.family_id,
                     credit_card_id=card_id, 
-                    holder_id=uuid.UUID(holder_id_str), 
+                    card_holder_id=uuid.UUID(card_holder_id_str), 
                     nickname=nickname if nickname else None
                 )
                 service.create_card_instance(dto)

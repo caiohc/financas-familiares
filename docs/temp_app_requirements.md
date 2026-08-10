@@ -7,6 +7,7 @@ Este documento guarda temporariamente os requisitos funcionais e não funcionais
 ### Gestão de Transações e Interface
 - O sistema deve permitir o cadastro manual e edição de transações (receitas e despesas) pelo usuário na interface.
 - **Recálculo Retroativo:** Se o usuário editar, adicionar ou remover uma transação pertencente a um mês passado, o sistema deve recalcular automaticamente o snapshot de saldo (`MonthlyBalance`) daquele mês e propagar as alterações para os meses subsequentes, garantindo que o fechamento nunca fique dessincronizado com o histórico de transações.
+- **Identificação de Contas Vencidas:** A interface deve fornecer uma visualização clara, ou dashboard, para que o usuário identifique com facilidade e rapidez todas as contas (despesas ou obrigações) que já passaram da `due_date` e que ainda não constam como pagas (ex: sem `settled_by_transfer_id` ou sem confirmação de fluxo de caixa).
 
 ### Importação, Classificação Automática e IA
 - O usuário poderá realizar upload de extratos bancários e faturas de cartão.

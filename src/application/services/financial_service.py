@@ -108,7 +108,7 @@ class FinancialService:
 
     def create_card_instance(self, dto: CreateCardInstanceDTO) -> CardInstance:
         # Novamente exigimos certeza de que quem portará o plástico está no ecossistema
-        member = self._ensure_member_exists(dto.holder_id)
+        member = self._ensure_member_exists(dto.card_holder_id)
         
         # Validar cruzado: O id de família preenchido bate com a família originária do Membro titular?
         if member.family_id != dto.family_id:
@@ -127,7 +127,7 @@ class FinancialService:
         instance = CardInstance(
             family_id=dto.family_id,
             credit_card_id=dto.credit_card_id,
-            holder_id=dto.holder_id,
+            card_holder_id=dto.card_holder_id,
             nickname=nickname
         )
         self._credit_card_repo.save_instance(instance)
@@ -242,7 +242,7 @@ class FinancialService:
         instance = self.get_card_instance(instance_id)
         
         if not nickname or nickname.strip() == "":
-            member = self._ensure_member_exists(instance.holder_id)
+            member = self._ensure_member_exists(instance.card_holder_id)
             master_card = self.get_credit_card(instance.credit_card_id)
             primeiro_nome = member.name.split()[0] if member.name else "Membro"
             nickname = f"{master_card.nickname} ({primeiro_nome})"

@@ -10,7 +10,7 @@ from domain.financial.entities import (
 
 def setup_base_domain():
     fam = Family(name="Família Teste")
-    mem = Member(family_id=fam.id, name="Caio H")
+    mem = Member(family_id=fam.id, name="Membro Teste 1")
     
     bank = BankAccount(family_id=fam.id, holder_id=mem.id, nickname="Itaú", bank="Itaú")
     cc = CreditCard(family_id=fam.id, holder_id=mem.id, nickname="Nubank", brand="Mastercard", issuer="Nubank", due_day=10, limit=Decimal('5000'))
@@ -28,21 +28,21 @@ def test_scenario_1_setup_and_heterogeneous_income():
     # Renda 1 (Dia 5)
     tx_inc1 = Transaction(
         family_id=fam.id, account_id=bank.id, category_id=cat_income.id,
-        type=TransactionType.INCOME, purchase_date=date(2026, 7, 5), due_date=date(2026, 7, 5),
+        type=TransactionType.INCOME, accrual_date=date(2026, 7, 5), due_date=date(2026, 7, 5),
         amount=Decimal('5000.00'), description="Salário Principal"
     )
     
     # Renda 2 (Dia 15)
     tx_inc2 = Transaction(
         family_id=fam.id, account_id=bank.id, category_id=cat_income.id,
-        type=TransactionType.INCOME, purchase_date=date(2026, 7, 15), due_date=date(2026, 7, 15),
+        type=TransactionType.INCOME, accrual_date=date(2026, 7, 15), due_date=date(2026, 7, 15),
         amount=Decimal('1500.00'), description="Freela"
     )
     
     # Despesa à vista (Dia 10)
     tx_exp1 = Transaction(
         family_id=fam.id, account_id=bank.id, category_id=cat_exp.id,
-        type=TransactionType.EXPENSE, purchase_date=date(2026, 7, 10), due_date=date(2026, 7, 10),
+        type=TransactionType.EXPENSE, accrual_date=date(2026, 7, 10), due_date=date(2026, 7, 10),
         amount=Decimal('800.00'), description="Supermercado"
     )
     
@@ -64,7 +64,7 @@ def test_scenario_2_deferred_expense_and_clearing():
     # Boleto gerado (Fato gerador em Julho, Vencimento 10 de Agosto)
     tx_boleto = Transaction(
         family_id=fam.id, account_id=ap.id, category_id=cat_exp.id,
-        type=TransactionType.EXPENSE, purchase_date=date(2026, 7, 1), due_date=date(2026, 8, 10),
+        type=TransactionType.EXPENSE, accrual_date=date(2026, 7, 1), due_date=date(2026, 8, 10),
         amount=Decimal('1000.00'), description="Condomínio"
     )
     
@@ -79,8 +79,8 @@ def test_scenario_2_deferred_expense_and_clearing():
     # Em Agosto, o usuário paga atrasado no dia 15, com R$ 50 de multa.
     tx_multa = Transaction(
         family_id=fam.id, account_id=ap.id, category_id=cat_fees.id,
-        type=TransactionType.EXPENSE, purchase_date=date(2026, 8, 15), due_date=date(2026, 8, 15),
-        amount=Decimal('50.00'), description="Multa Condomínio"
+        type=TransactionType.EXPENSE, accrual_date=date(2026, 8, 15), due_date=date(2026, 8, 15),
+        amount=Decimal('50.00'), description="Multa Condomínio", originating_transaction_id=tx_boleto.id
     )
     
     # Transferência (O Pagamento Real)
@@ -92,6 +92,7 @@ def test_scenario_2_deferred_expense_and_clearing():
     
     # O "Pulo do Gato": Conciliação (Clearing)
     tx_boleto.settled_by_transfer_id = pagamento.id
+    tx_multa.settled_by_transfer_id = pagamento.id
     
     # Fechamento de Agosto do Passivo (AccountsPayable)
     # Considera o saldo do mês passado (-1000) + Multa (-50) + Pagamento (+1050)
@@ -101,7 +102,8 @@ def test_scenario_2_deferred_expense_and_clearing():
         transactions=[tx_multa, in_tx]
     )
     
-    assert tx_boleto.settled_by_transfer_id is not None
+    assert tx_boleto.settled_by_transfer_id == pagamento.id
+    assert tx_multa.settled_by_transfer_id == pagamento.id
     assert mb_aug_ap.real_balance == Decimal('0.00')
 
 def test_scenario_3_credit_card_installments():
@@ -114,7 +116,7 @@ def test_scenario_3_credit_card_installments():
         installments.append(
             Transaction(
                 family_id=fam.id, account_id=cc.id, category_id=cat_exp.id,
-                type=TransactionType.EXPENSE, purchase_date=date(2026, 1, 10), due_date=date(2026, i, 10),
+                type=TransactionType.EXPENSE, accrual_date=date(2026, 1, 10), due_date=date(2026, i, 10),
                 amount=Decimal('200.00'), description=f"TV {i}/6",
                 installment_current=i, installment_total=6, installment_group_id=group_id
             )
@@ -154,9 +156,9 @@ def test_scenario_4_indebtedness_and_rollover():
     
     # --- MÊS 1 ---
     # Receitas: 3000. Despesas: 2000 (Débito) + 2000 (Cartão)
-    tx_inc = Transaction(family_id=fam.id, account_id=bank.id, category_id=cat_income.id, type=TransactionType.INCOME, purchase_date=date(2026, 1, 5), due_date=date(2026, 1, 5), amount=Decimal('3000.00'), description="Salário")
-    tx_exp_cash = Transaction(family_id=fam.id, account_id=bank.id, category_id=cat_exp.id, type=TransactionType.EXPENSE, purchase_date=date(2026, 1, 15), due_date=date(2026, 1, 15), amount=Decimal('2000.00'), description="Aluguel")
-    tx_exp_cc = Transaction(family_id=fam.id, account_id=cc.id, category_id=cat_exp.id, type=TransactionType.EXPENSE, purchase_date=date(2026, 1, 20), due_date=date(2026, 2, 10), amount=Decimal('2000.00'), description="Móveis")
+    tx_inc = Transaction(family_id=fam.id, account_id=bank.id, category_id=cat_income.id, type=TransactionType.INCOME, accrual_date=date(2026, 1, 5), due_date=date(2026, 1, 5), amount=Decimal('3000.00'), description="Salário")
+    tx_exp_cash = Transaction(family_id=fam.id, account_id=bank.id, category_id=cat_exp.id, type=TransactionType.EXPENSE, accrual_date=date(2026, 1, 15), due_date=date(2026, 1, 15), amount=Decimal('2000.00'), description="Aluguel")
+    tx_exp_cc = Transaction(family_id=fam.id, account_id=cc.id, category_id=cat_exp.id, type=TransactionType.EXPENSE, accrual_date=date(2026, 1, 20), due_date=date(2026, 2, 10), amount=Decimal('2000.00'), description="Móveis")
     
     mb_m1_bank = MonthlyBalance.create_from_history(account_id=bank.id, month="2026-01", previous_real_balance=Decimal('0.00'), previous_projected_balance=Decimal('0.00'), transactions=[tx_inc, tx_exp_cash])
     mb_m1_cc = MonthlyBalance.create_from_history(account_id=cc.id, month="2026-01", previous_real_balance=Decimal('0.00'), previous_projected_balance=Decimal('0.00'), transactions=[tx_exp_cc])
@@ -168,13 +170,13 @@ def test_scenario_4_indebtedness_and_rollover():
     
     # --- MÊS 2 ---
     # Receitas: 3000. Fatura: 2000. Paga apenas 1000 (Rolagem). Juros: 100. Nova compra CC: 500.
-    tx_inc2 = Transaction(family_id=fam.id, account_id=bank.id, category_id=cat_income.id, type=TransactionType.INCOME, purchase_date=date(2026, 2, 5), due_date=date(2026, 2, 5), amount=Decimal('3000.00'), description="Salário")
+    tx_inc2 = Transaction(family_id=fam.id, account_id=bank.id, category_id=cat_income.id, type=TransactionType.INCOME, accrual_date=date(2026, 2, 5), due_date=date(2026, 2, 5), amount=Decimal('3000.00'), description="Salário")
     
     pagamento_parcial = Transfer(family_id=fam.id, source_account_id=bank.id, destination_account_id=cc.id, amount=Decimal('1000.00'), date=date(2026, 2, 10), description="Pagto Parcial Fatura")
     out_tx, in_tx = pagamento_parcial.generate_transactions(category_id=cat_exp.id)
     
-    tx_fees = Transaction(family_id=fam.id, account_id=cc.id, category_id=cat_fees.id, type=TransactionType.EXPENSE, purchase_date=date(2026, 2, 15), due_date=date(2026, 3, 10), amount=Decimal('100.00'), description="Juros Rolagem")
-    tx_new_cc = Transaction(family_id=fam.id, account_id=cc.id, category_id=cat_exp.id, type=TransactionType.EXPENSE, purchase_date=date(2026, 2, 20), due_date=date(2026, 3, 10), amount=Decimal('500.00'), description="Roupas")
+    tx_fees = Transaction(family_id=fam.id, account_id=cc.id, category_id=cat_fees.id, type=TransactionType.EXPENSE, accrual_date=date(2026, 2, 15), due_date=date(2026, 3, 10), amount=Decimal('100.00'), description="Juros Rolagem")
+    tx_new_cc = Transaction(family_id=fam.id, account_id=cc.id, category_id=cat_exp.id, type=TransactionType.EXPENSE, accrual_date=date(2026, 2, 20), due_date=date(2026, 3, 10), amount=Decimal('500.00'), description="Roupas")
     
     mb_m2_bank = MonthlyBalance.create_from_history(account_id=bank.id, month="2026-02", previous_real_balance=mb_m1_bank.real_balance, previous_projected_balance=mb_m1_bank.projected_balance, transactions=[tx_inc2, out_tx])
     mb_m2_cc = MonthlyBalance.create_from_history(account_id=cc.id, month="2026-02", previous_real_balance=mb_m1_cc.real_balance, previous_projected_balance=mb_m1_cc.projected_balance, transactions=[in_tx, tx_fees, tx_new_cc])

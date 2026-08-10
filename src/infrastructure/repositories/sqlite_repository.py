@@ -115,7 +115,7 @@ class MemberSQLiteRepository(MemberRepository):
             id_str = str(member_id)
             if conn.execute("SELECT 1 FROM bank_accounts WHERE holder_id = ? LIMIT 1", (id_str,)).fetchone(): return True
             if conn.execute("SELECT 1 FROM credit_cards WHERE holder_id = ? LIMIT 1", (id_str,)).fetchone(): return True
-            if conn.execute("SELECT 1 FROM card_instances WHERE holder_id = ? LIMIT 1", (id_str,)).fetchone(): return True
+            if conn.execute("SELECT 1 FROM card_instances WHERE card_holder_id = ? LIMIT 1", (id_str,)).fetchone(): return True
             return False
 
 
@@ -254,10 +254,11 @@ class CreditCardSQLiteRepository(CreditCardRepository):
     def save_instance(self, ci: CardInstance) -> None:
         with get_connection(self.db_path) as conn:
             conn.execute(
-                "INSERT INTO card_instances (id, family_id, credit_card_id, holder_id, nickname) "
+                "INSERT INTO card_instances (id, family_id, credit_card_id, card_holder_id, nickname) "
                 "VALUES (?, ?, ?, ?, ?) "
-                "ON CONFLICT(id) DO UPDATE SET nickname=excluded.nickname",
-                (str(ci.id), str(ci.family_id), str(ci.credit_card_id), str(ci.holder_id), ci.nickname)
+                "ON CONFLICT(id) DO UPDATE SET "
+                "nickname=excluded.nickname",
+                (str(ci.id), str(ci.family_id), str(ci.credit_card_id), str(ci.card_holder_id), ci.nickname)
             )
 
     def list_instances_by_family(self, family_id: uuid.UUID) -> list[CardInstance]:
@@ -274,7 +275,7 @@ class CreditCardSQLiteRepository(CreditCardRepository):
                 c = CardInstance(
                     family_id=uuid.UUID(r['family_id']) if r['family_id'] else uuid.UUID(int=0),
                     credit_card_id=uuid.UUID(r['credit_card_id']),
-                    holder_id=uuid.UUID(r['holder_id']),
+                    card_holder_id=uuid.UUID(r['card_holder_id']),
                     nickname=r['nickname']
                 )
                 c.id = uuid.UUID(r['id'])
@@ -327,7 +328,7 @@ class CreditCardSQLiteRepository(CreditCardRepository):
                 c = CardInstance(
                     family_id=uuid.UUID(row['family_id']) if row['family_id'] else uuid.UUID(int=0),
                     credit_card_id=uuid.UUID(row['credit_card_id']),
-                    holder_id=uuid.UUID(row['holder_id']),
+                    card_holder_id=uuid.UUID(row['card_holder_id']),
                     nickname=row['nickname']
                 )
                 c.id = uuid.UUID(row['id'])
@@ -342,7 +343,7 @@ class CreditCardSQLiteRepository(CreditCardRepository):
                 c = CardInstance(
                     family_id=uuid.UUID(row['family_id']) if row['family_id'] else uuid.UUID(int=0),
                     credit_card_id=uuid.UUID(row['credit_card_id']),
-                    holder_id=uuid.UUID(row['holder_id']),
+                    card_holder_id=uuid.UUID(row['card_holder_id']),
                     nickname=row['nickname']
                 )
                 c.id = uuid.UUID(row['id'])

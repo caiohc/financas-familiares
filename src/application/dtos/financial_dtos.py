@@ -29,7 +29,7 @@ class CreateCreditCardDTO:
 class CreateCardInstanceDTO:
     family_id: uuid.UUID
     credit_card_id: uuid.UUID
-    holder_id: uuid.UUID
+    card_holder_id: uuid.UUID
     nickname: Optional[str] = None
 
 @dataclass(kw_only=True)

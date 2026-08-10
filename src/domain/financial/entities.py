@@ -131,7 +131,7 @@ class CardInstance:
     id: uuid.UUID = field(default_factory=uuid.uuid4)
     family_id: uuid.UUID
     credit_card_id: uuid.UUID
-    holder_id: uuid.UUID  # Quem tem a posse deste plástico (titular ou dependente)
+    card_holder_id: uuid.UUID  # Quem tem a posse deste plástico (titular ou dependente)
     nickname: str  
 
     def __post_init__(self):
@@ -139,7 +139,7 @@ class CardInstance:
             raise ValueError("O cartão (instância) deve estar associado a uma família.")
         if not self.credit_card_id:
             raise ValueError("O cartão (instância) deve estar associado a um contrato de cartão de crédito mestre.")
-        if not self.holder_id:
+        if not self.card_holder_id:
             raise ValueError("O cartão (instância) deve ter um portador.")
 
 
@@ -155,6 +155,7 @@ class CreditCardBill:
     previous_balance: Decimal = Decimal('0.00')  # Saldo devedor herdado da fatura anterior
     payments_received: Decimal = Decimal('0.00')  # Pagamentos realizados entre o fechamento da anterior e desta
     total_amount: Decimal = Decimal('0.00')
+    settled_by_transfer_ids: list[uuid.UUID] = field(default_factory=list) # IDs de Transferências que pagaram esta fatura
 
     def __post_init__(self):
         if not self.family_id:
@@ -220,7 +221,7 @@ class Transaction:
     family_id: uuid.UUID
     category_id: uuid.UUID
     type: TransactionType
-    purchase_date: date  # Data do fato gerador (competência/DRE)
+    accrual_date: date  # Data do fato gerador (competência/DRE)
     due_date: date       # Data de vencimento (expectativa de fluxo de caixa)
     amount: Decimal
     description: str
@@ -233,7 +234,9 @@ class Transaction:
     card_instance_id: Optional[uuid.UUID] = None
     credit_card_bill_id: Optional[uuid.UUID] = None
     transfer_id: Optional[uuid.UUID] = None
-    settled_by_transfer_id: Optional[uuid.UUID] = None  # Aponta para a Transferência que pagou esta transação (Conciliação/Baixa)
+    settled_by_transfer_id: Optional[uuid.UUID] = None  # Aponta para a Transferência que pagou esta transação (Conciliação/Baixa de Boletos)
+    originating_transaction_id: Optional[uuid.UUID] = None  # (Opcional) Aponta para a transação "Pai" que originou esta (ex: multa originada de boleto atrasado)
+    originating_bill_id: Optional[uuid.UUID] = None # (Opcional) Aponta para a Fatura que originou esta transação (ex: juros rotativo por fatura não paga)
     source_transaction_id: Optional[str] = None  # ID originário do extrato do banco/cartão para evitar duplicação (idempotência)
     cost_center_id: Optional[uuid.UUID] = None  # Aponta para o FamilyCostCenter (Núcleo Sogra, Casa de Praia, etc)
     
@@ -249,8 +252,8 @@ class Transaction:
             raise ValueError("A transação deve ter uma categoria.")
         if not self.type:
             raise ValueError("A transação deve ter um tipo.")
-        if not self.purchase_date:
-            raise ValueError("A transação deve ter uma data de compra/competência (purchase_date).")
+        if not self.accrual_date:
+            raise ValueError("A transação deve ter uma data de compra/competência (accrual_date).")
         if not self.due_date:
             raise ValueError("A transação deve ter uma data de vencimento (due_date).")
         if self.amount is None:
@@ -286,7 +289,7 @@ class Transfer:
             account_id=self.source_account_id,
             category_id=category_id,
             type=TransactionType.TRANSFER_OUT,
-            purchase_date=self.date,
+            accrual_date=self.date,
             due_date=self.date,
             amount=self.amount,
             description=self.description or "Transferência enviada",
@@ -298,7 +301,7 @@ class Transfer:
             account_id=self.destination_account_id,
             category_id=category_id,
             type=TransactionType.TRANSFER_IN,
-            purchase_date=self.date,
+            accrual_date=self.date,
             due_date=self.date,
             amount=self.amount,
             description=self.description or "Transferência recebida",

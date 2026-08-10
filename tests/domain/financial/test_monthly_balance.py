@@ -2,6 +2,7 @@ from decimal import Decimal
 import uuid
 import pytest
 from domain.financial.entities import MonthlyBalance, Transaction, TransactionType
+from datetime import date
 
 def test_monthly_balance_validations():
     acc_id = uuid.uuid4()
@@ -19,7 +20,6 @@ def test_monthly_balance_create_from_history():
     acc_id = uuid.uuid4()
     fam_id = uuid.uuid4()
     cat_id = uuid.uuid4()
-    from datetime import date
     
     # Saldo inicial
     prev_real = Decimal('1000.00')
@@ -28,35 +28,35 @@ def test_monthly_balance_create_from_history():
     # + 500 (Receita)
     tx1 = Transaction(
         family_id=fam_id, account_id=acc_id, category_id=cat_id, 
-        type=TransactionType.INCOME, purchase_date=date(2026, 5, 10), due_date=date(2026, 5, 10), 
+        type=TransactionType.INCOME, accrual_date=date(2026, 5, 10), due_date=date(2026, 5, 10), 
         amount=Decimal('500.00'), description="Salário"
     )
     
     # - 200 (Despesa)
     tx2 = Transaction(
         family_id=fam_id, account_id=acc_id, category_id=cat_id, 
-        type=TransactionType.EXPENSE, purchase_date=date(2026, 5, 12), due_date=date(2026, 5, 12), 
+        type=TransactionType.EXPENSE, accrual_date=date(2026, 5, 12), due_date=date(2026, 5, 12), 
         amount=Decimal('200.00'), description="Luz"
     )
     
     # - 100 (Transferência saindo)
     tx3 = Transaction(
         family_id=fam_id, account_id=acc_id, category_id=cat_id, 
-        type=TransactionType.TRANSFER_OUT, purchase_date=date(2026, 5, 15), due_date=date(2026, 5, 15), 
+        type=TransactionType.TRANSFER_OUT, accrual_date=date(2026, 5, 15), due_date=date(2026, 5, 15), 
         amount=Decimal('100.00'), description="Pix para Investimento"
     )
     
     # + 300 (Transferência entrando)
     tx4 = Transaction(
         family_id=fam_id, account_id=acc_id, category_id=cat_id, 
-        type=TransactionType.TRANSFER_IN, purchase_date=date(2026, 5, 20), due_date=date(2026, 5, 20), 
+        type=TransactionType.TRANSFER_IN, accrual_date=date(2026, 5, 20), due_date=date(2026, 5, 20), 
         amount=Decimal('300.00'), description="Pix recebido"
     )
     
     # - 150 (Despesa prevista)
     tx5 = Transaction(
         family_id=fam_id, account_id=acc_id, category_id=cat_id, 
-        type=TransactionType.EXPENSE, purchase_date=date(2026, 5, 25), due_date=date(2026, 5, 25), 
+        type=TransactionType.EXPENSE, accrual_date=date(2026, 5, 25), due_date=date(2026, 5, 25), 
         amount=Decimal('150.00'), description="Internet", is_forecast=True
     )
     
