@@ -14,7 +14,6 @@ BASE_DIR = Path(PROJECT_ROOT_ENV).resolve()
 
 # Definição dos caminhos lidos do .env ou com valores padrão seguros
 DB_PATH = os.getenv("DB_PATH", "app.db")
-MIGRATIONS_PATH = os.getenv("MIGRATIONS_PATH", "migrations")
 CATEGORIES_PATH = os.getenv("CATEGORIES_PATH", r"src\resources\default_categories.json")
 
 # Converte caminhos relativos em caminhos absolutos baseados na raiz do projeto
@@ -26,5 +25,4 @@ def get_absolute_path(path_str: str) -> Path:
 
 # Atalhos para caminhos absolutos comumente usados
 DB_ABS_PATH = get_absolute_path(DB_PATH)
-MIGRATIONS_ABS_PATH = get_absolute_path(MIGRATIONS_PATH)
 DEFAULT_CATEGORIES_ABS_PATH = get_absolute_path(CATEGORIES_PATH)

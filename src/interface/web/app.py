@@ -4,11 +4,13 @@ import os
 from flask import Flask, render_template
 
 from infrastructure.database.setup import apply_migrations
-from infrastructure.repositories.sqlite_repository import (
-    FamilySQLiteRepository, MemberSQLiteRepository,
-    BankAccountSQLiteRepository, CreditCardSQLiteRepository, TransactionSQLiteRepository,
-    CreditCardBillSQLiteRepository, CategorySQLiteRepository
+from infrastructure.repositories.sqlalchemy_repositories import (
+    SQLAlchemyFamilyRepository, SQLAlchemyMemberRepository,
+    SQLAlchemyBankAccountRepository, SQLAlchemyCreditCardRepository,
+    SQLAlchemyTransactionRepository, SQLAlchemyCreditCardBillRepository,
+    SQLAlchemyCategoryRepository
 )
+from infrastructure.database.database import SessionLocal
 
 from application.services.family_service import FamilyService
 from application.services.financial_service import FinancialService
@@ -20,13 +22,13 @@ from config import DB_ABS_PATH, DEFAULT_CATEGORIES_ABS_PATH
 DATABASE_PATH = str(DB_ABS_PATH)
 apply_migrations(DATABASE_PATH)
 
-db_family = FamilySQLiteRepository(DATABASE_PATH)
-db_member = MemberSQLiteRepository(DATABASE_PATH)
-db_bank_account = BankAccountSQLiteRepository(DATABASE_PATH)
-db_credit_card = CreditCardSQLiteRepository(DATABASE_PATH)
-db_transaction = TransactionSQLiteRepository(DATABASE_PATH)
-db_credit_card_bill = CreditCardBillSQLiteRepository(DATABASE_PATH)
-db_category = CategorySQLiteRepository(DATABASE_PATH)
+db_family = SQLAlchemyFamilyRepository(SessionLocal)
+db_member = SQLAlchemyMemberRepository(SessionLocal)
+db_bank_account = SQLAlchemyBankAccountRepository(SessionLocal)
+db_credit_card = SQLAlchemyCreditCardRepository(SessionLocal)
+db_transaction = SQLAlchemyTransactionRepository(SessionLocal)
+db_credit_card_bill = SQLAlchemyCreditCardBillRepository(SessionLocal)
+db_category = SQLAlchemyCategoryRepository(SessionLocal)
 
 # 2. INSTANCIAÇÃO DOS SERVIÇOS (Casos de uso)
 # Inversão de Controle acontecendo no topo e injetando as dependências reais
@@ -44,6 +46,10 @@ app = Flask(__name__)
 app.config['FAMILY_SERVICE'] = family_service
 app.config['FINANCIAL_SERVICE'] = financial_service
 app.config['CATEGORY_SERVICE'] = category_service
+
+@app.teardown_appcontext
+def shutdown_session(exception=None):
+    SessionLocal.remove()
 
 # Executa o Bootstrap de categorias usando base padrão
 bootstrap_categories(category_service, str(DEFAULT_CATEGORIES_ABS_PATH))

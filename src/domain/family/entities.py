@@ -1,6 +1,7 @@
 from decimal import Decimal
 import uuid
 from dataclasses import dataclass, field
+from typing import Optional
 
 @dataclass(kw_only=True)
 class Family:
@@ -42,7 +43,7 @@ class FamilyCostCenter:
     id: uuid.UUID = field(default_factory=uuid.uuid4)
     family_id: uuid.UUID
     name: str
-    description: str = ""
+    description: Optional[str] = None
 
     def __post_init__(self):
         if not self.name or not self.name.strip():

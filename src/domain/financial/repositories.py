@@ -2,14 +2,13 @@ import uuid
 from abc import ABC, abstractmethod
 from typing import Optional, List
 
+from domain.family.entities import Family, Member
 from domain.financial.entities import (
     BankAccount,
     CardInstance,
     Category,
     CreditCard,
     CreditCardBill,
-    Family,
-    Member,
     Transaction,
 )
 

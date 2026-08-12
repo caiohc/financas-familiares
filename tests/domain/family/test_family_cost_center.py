@@ -8,7 +8,7 @@ def test_family_cost_center_creation():
     
     assert cc.family_id == fam_id
     assert cc.name == "Núcleo Sogra"
-    assert cc.description == ""
+    assert cc.description is None
     assert isinstance(cc.id, uuid.UUID)
 
 def test_family_cost_center_invalid_name():
