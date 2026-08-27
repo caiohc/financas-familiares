@@ -1,5 +1,3 @@
-import uuid
-from typing import Optional, List
 from decimal import Decimal
 from datetime import date
 from sqlalchemy import String, Numeric, Boolean, Date, Enum, ForeignKey, Table, Column, Integer
@@ -34,7 +32,7 @@ class FamilyCostCenterModel(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     family_id: Mapped[str] = mapped_column(String(36), ForeignKey("families.id", ondelete="CASCADE"), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    description: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
 class CategoryModel(Base):
     __tablename__ = "categories"
@@ -64,8 +62,8 @@ class BankAccountModel(AccountModel):
     __tablename__ = "bank_accounts"
     id: Mapped[str] = mapped_column(String(36), ForeignKey("accounts.id", ondelete="CASCADE"), primary_key=True)
     bank: Mapped[str] = mapped_column(String(100), nullable=False)
-    agency: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
-    account_number: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    agency: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    account_number: Mapped[str | None] = mapped_column(String(50), nullable=True)
     
     __mapper_args__ = {"polymorphic_identity": "bank_account"}
 
@@ -83,11 +81,11 @@ class CreditCardModel(AccountModel):
     __tablename__ = "credit_cards"
     id: Mapped[str] = mapped_column(String(36), ForeignKey("accounts.id", ondelete="CASCADE"), primary_key=True)
     brand: Mapped[str] = mapped_column(String(50), nullable=False)
-    issuer: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
-    due_day: Mapped[Optional[int]] = mapped_column(nullable=True)
-    tier: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    issuer: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    due_day: Mapped[int | None] = mapped_column(nullable=True)
+    tier: Mapped[str | None] = mapped_column(String(50), nullable=True)
     limit: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
-    bank_account_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True)
+    bank_account_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("accounts.id", ondelete="SET NULL"), nullable=True)
     
     __mapper_args__ = {
         "polymorphic_identity": "credit_card",
@@ -116,7 +114,7 @@ class CreditCardBillModel(Base):
     is_closed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     
     # O mapeamento relacional da lista de IDs de Transferências
-    settled_by_transfers: Mapped[List["TransferModel"]] = relationship(
+    settled_by_transfers: Mapped[list["TransferModel"]] = relationship(
         secondary=bill_transfer_settlements
     )
 
@@ -144,19 +142,19 @@ class TransactionModel(Base):
     account_id: Mapped[str] = mapped_column(String(36), ForeignKey("accounts.id", ondelete="CASCADE"), nullable=False)
     
     # Relacionamentos esparsos (Nullable FKs)
-    card_instance_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("card_instances.id", ondelete="SET NULL"), nullable=True)
-    credit_card_bill_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("credit_card_bills.id", ondelete="SET NULL"), nullable=True)
-    transfer_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("transfers.id", ondelete="SET NULL"), nullable=True)
-    settled_by_transfer_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("transfers.id", ondelete="SET NULL"), nullable=True)
-    originating_transaction_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("transactions.id", ondelete="SET NULL"), nullable=True)
-    originating_bill_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("credit_card_bills.id", ondelete="SET NULL"), nullable=True)
-    source_transaction_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
-    cost_center_id: Mapped[Optional[str]] = mapped_column(String(36), ForeignKey("family_cost_centers.id", ondelete="SET NULL"), nullable=True)
+    card_instance_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("card_instances.id", ondelete="SET NULL"), nullable=True)
+    credit_card_bill_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("credit_card_bills.id", ondelete="SET NULL"), nullable=True)
+    transfer_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("transfers.id", ondelete="SET NULL"), nullable=True)
+    settled_by_transfer_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("transfers.id", ondelete="SET NULL"), nullable=True)
+    originating_transaction_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("transactions.id", ondelete="SET NULL"), nullable=True)
+    originating_bill_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("credit_card_bills.id", ondelete="SET NULL"), nullable=True)
+    source_transaction_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    cost_center_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("family_cost_centers.id", ondelete="SET NULL"), nullable=True)
     
     # Metadados de parcelamento
     installment_current: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     installment_total: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
-    installment_group_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True)
+    installment_group_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
 
 class MonthlyBalanceModel(Base):
     __tablename__ = "monthly_balances"

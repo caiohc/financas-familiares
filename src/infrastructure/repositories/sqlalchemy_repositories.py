@@ -192,6 +192,7 @@ class SQLAlchemyCreditCardRepository(CreditCardRepository):
         return CreditCard(
             id=uuid.UUID(model.id),
             family_id=uuid.UUID(model.family_id),
+            holder_id=uuid.UUID(model.holder_id) if model.holder_id else None,
             nickname=model.nickname,
             brand=model.brand,
             issuer=model.issuer,
@@ -205,6 +206,7 @@ class SQLAlchemyCreditCardRepository(CreditCardRepository):
         return CreditCardModel(
             id=str(entity.id),
             family_id=str(entity.family_id),
+            holder_id=str(entity.holder_id) if entity.holder_id else None,
             nickname=entity.nickname,
             account_type=entity.account_type,
             brand=entity.brand,
