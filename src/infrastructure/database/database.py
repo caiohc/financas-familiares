@@ -1,36 +1,35 @@
-from typing import Generator
 from sqlalchemy import create_engine
-from sqlalchemy.orm import scoped_session, sessionmaker, Session
-import os
-import sys
-
-# Ajustando import do DB_ABS_PATH da raiz @ToDo: refatorar para que seja algo mais limpo
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))) 
-from config import DB_ABS_PATH
-
-# 1. Configuração do Engine
-DATABASE_URL = f"sqlite:///{DB_ABS_PATH}"
-
-engine = create_engine(
-    DATABASE_URL,
-    echo=True,  # Em dev, colocar como True para ver o SQL gerado no console
-    connect_args={"check_same_thread": False}
-)
-
 from sqlalchemy.orm import scoped_session, sessionmaker
 
-# 2. Configuração da Fábrica de Sessões (Unit of Work)
-session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-SessionLocal = scoped_session(session_factory)
+# Criamos o Registro de Sessões (Session Registry) vazio por enquanto.
+# Ele será preenchido apenas quando a aplicação inicializar de verdade.
+SessionLocal = scoped_session(sessionmaker(autocommit=False, autoflush=False))
 
+def init_db(app):
+    """Inicializa o banco de dados amarrando o SQLAlchemy ao ciclo de vida do Flask."""
+    database_uri = app.config.get("SQLALCHEMY_DATABASE_URI")
+    
+    # Fallback Elegante: Se nenhuma URI foi definida, usamos a convenção nativa do Flask
+    if not database_uri:
+        import os
+        # O Flask já sabe onde fica a pasta instance absoluta do projeto
+        os.makedirs(app.instance_path, exist_ok=True) 
+        db_path = os.path.join(app.instance_path, "app.db")
+        database_uri = f"sqlite:///{db_path}"
+        # Salva de volta nas configurações (útil para logs/debug)
+        app.config["SQLALCHEMY_DATABASE_URI"] = database_uri
 
+    # 1. Cria o Engine a partir da URL fornecida (seja PostgreSQL ou SQLite)
+    engine = create_engine(
+        database_uri,
+        echo=app.config.get("DEBUG", False),
+        connect_args={"check_same_thread": False} if "sqlite" in database_uri else {}
+    )
 
-# 4. Injeção de Dependência (Generator)
-# Esta função fornece uma Sessão que será injetada nos repositórios.
-def get_db_session() -> Generator[Session, None, None]:
-    """Cria uma nova sessão de banco de dados para uma requisição/operação."""
-    session = SessionLocal()
-    try:
-        yield session
-    finally:
-        session.close()
+    # 2. Conecta a nossa fábrica local ao Engine recém-criado
+    SessionLocal.configure(bind=engine)
+
+    # 3. Garante que, ao fim de cada requisição Web, a Sessão seja fechada limpa da memória
+    @app.teardown_appcontext
+    def shutdown_session(exception=None):
+        SessionLocal.remove()

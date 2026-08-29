@@ -30,3 +30,6 @@ logs/
 .uv/
 .ruff_cache/
 test.py
+
+# Flask Instance folder
+instance/

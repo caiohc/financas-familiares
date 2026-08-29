@@ -1,13 +1,23 @@
-import uuid
+from uuid import UUID
 from dataclasses import dataclass
+from decimal import Decimal
 
 @dataclass(kw_only=True)
 class CreateFamilyDTO:
-    """Dados de entrada brutos oriundos da futura API/CLI para criação da família."""
     name: str
 
 @dataclass(kw_only=True)
-class CreateMemberDTO:
-    """Entrada bruta para criar um Membro e validá-lo contra injeções nulas antes de virar Entidade."""
-    family_id: uuid.UUID
+class UpdateFamilyDTO:
     name: str
+
+@dataclass(kw_only=True)
+class FamilyResponseDTO:
+    id: UUID
+    name: str
+    current_balance: Decimal
+
+@dataclass(kw_only=True)
+class CreateMemberDTO:
+    family_id: UUID
+    name: str
+
