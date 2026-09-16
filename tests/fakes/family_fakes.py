@@ -2,6 +2,8 @@ import uuid
 from typing import Optional
 from domain.family.repositories import FamilyRepository
 from domain.family.entities import Family
+from application.interfaces.unit_of_work import AbstractUnitOfWork
+
 
 class FakeFamilyRepository(FamilyRepository):
     """
@@ -31,8 +33,6 @@ class FakeFamilyRepository(FamilyRepository):
     def set_has_dependencies(self, value: bool):
         """Método auxiliar exclusivo para testes manipularem o estado do Fake."""
         self._has_deps = value
-
-from application.interfaces.unit_of_work import AbstractUnitOfWork
 
 class FakeUnitOfWork(AbstractUnitOfWork):
     """

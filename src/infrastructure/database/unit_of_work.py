@@ -20,9 +20,8 @@ class SQLAlchemyUnitOfWork(AbstractUnitOfWork):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         super().__exit__(exc_type, exc_val, exc_tb)
-        # Fecha a sessão no fim do bloco 'with'
-        # Em aplicações Web, a SessionLocal cuidará do encerramento final,
-        # mas fechar aqui reforça a limpeza se rodado fora do escopo Web.
+        # Como abolimos o scoped_session, a responsabilidade de devolver
+        # a conexão para o pool do SQLAlchemy é puramente do UnitOfWork.
         self.session.close()
 
     def commit(self):

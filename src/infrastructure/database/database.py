@@ -1,23 +1,17 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
-# Criamos o Registro de Sessões (Session Registry) vazio por enquanto.
-# Ele será preenchido apenas quando a aplicação inicializar de verdade.
-SessionLocal = scoped_session(sessionmaker(autocommit=False, autoflush=False))
+# Criamos a Fábrica de Sessões pura. Sem mágicas atreladas a Threads ou ao Flask.
+SessionLocal = sessionmaker(autocommit=False, autoflush=False)
 
 def init_db(app):
-    """Inicializa o banco de dados amarrando o SQLAlchemy ao ciclo de vida do Flask."""
+    """Inicializa o banco de dados definindo o Engine."""
     database_uri = app.config.get("SQLALCHEMY_DATABASE_URI")
-    
-    # Fallback Elegante: Se nenhuma URI foi definida, usamos a convenção nativa do Flask
+
     if not database_uri:
-        import os
-        # O Flask já sabe onde fica a pasta instance absoluta do projeto
-        os.makedirs(app.instance_path, exist_ok=True) 
-        db_path = os.path.join(app.instance_path, "app.db")
-        database_uri = f"sqlite:///{db_path}"
-        # Salva de volta nas configurações (útil para logs/debug)
-        app.config["SQLALCHEMY_DATABASE_URI"] = database_uri
+        raise RuntimeError(
+            "DATABASE_URI não definida."
+        )
 
     # 1. Cria o Engine a partir da URL fornecida (seja PostgreSQL ou SQLite)
     engine = create_engine(
@@ -28,8 +22,8 @@ def init_db(app):
 
     # 2. Conecta a nossa fábrica local ao Engine recém-criado
     SessionLocal.configure(bind=engine)
-
-    # 3. Garante que, ao fim de cada requisição Web, a Sessão seja fechada limpa da memória
-    @app.teardown_appcontext
-    def shutdown_session(exception=None):
-        SessionLocal.remove()
+    
+    # Observação: Não precisamos mais do @app.teardown_appcontext.
+    # Nossa arquitetura usando Unit of Work + DTOs garante que a sessão
+    # seja fechada de forma determinística no fim do bloco 'with', sem
+    # acoplamento com o ciclo de vida da requisição HTTP do Flask.

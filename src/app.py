@@ -29,7 +29,7 @@ def create_app():
     
     # Registro das Rotas (Blueprints)
     from interface.web.routes.family_routes import bp as family_bp
-    app.register_blueprint(family_bp, url_prefix='/families')
+    app.register_blueprint(family_bp, url_prefix='/family')
     
     return app
 
