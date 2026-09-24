@@ -5,7 +5,7 @@
 {% block content %}
 <div class="page-header">
     <h1>Famílias Cadastradas</h1>
-    <a href="{{ url_for('family.create') }}" class="btn btn-success">+ Nova Família</a>
+    <a href="{{ url_for('family.new') }}" class="btn btn-success">+ Nova Família</a>
 </div>
 
 {% if error %}
@@ -33,12 +33,12 @@
                     loop.index }}</td>
                 <td style="padding: 1rem 1.5rem; font-weight: 600; color: var(--text-primary);">{{ f.name }}</td>
                 <td style="padding: 1rem 1.5rem; text-align: right; display: flex; justify-content: flex-end; gap: 0.5rem; border-bottom: none;">
-                    <a href="{{ url_for('family.update', family_id=f.id) }}" class="btn"
-                        style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background-color: rgba(47, 129, 247, 0.2); color: var(--accent-glow);">✏️
-                        Editar</a>
-                    <form action="{{ url_for('family.delete', family_id=f.id) }}" method="POST" style="display: inline;" onsubmit="return confirm('Tem certeza que deseja excluir esta família?');">
-                        <button type="submit" class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background-color: rgba(218, 54, 51, 0.2); color: var(--danger-color); border: none; cursor: pointer;">🗑️ Excluir</button>
-                    </form>
+                    <!-- Marcadores: as rotas de update/delete ainda não existem -->
+                    <button type="button" disabled title="Em breve" class="btn"
+                        style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background-color: rgba(47, 129, 247, 0.2); color: var(--accent-glow); border: none; cursor: not-allowed; opacity: 0.5;">✏️
+                        Editar</button>
+                    <button type="button" disabled title="Em breve" class="btn"
+                        style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background-color: rgba(218, 54, 51, 0.2); color: var(--danger-color); border: none; cursor: not-allowed; opacity: 0.5;">🗑️ Excluir</button>
                 </td>
             </tr>
             {% else %}

@@ -12,14 +12,19 @@ def family_service_factory():
     uow = SQLAlchemyUnitOfWork(SessionLocal)
     return FamilyService(uow=uow)
 
-def create_app():
+def create_app(test_config=None):
     """Factory Pattern: Cria e configura uma instância da aplicação Flask."""
-    
-    app = Flask(__name__, instance_relative_config=True)
-    
-    # 1. Carrega as Configurações 
+
+    app = Flask(__name__, instance_relative_config=True, template_folder="interface/web/templates")
+
+    # 1. Carrega as Configurações
     app.config.from_object(Config)
-    
+    if test_config:
+        app.config.update(test_config)
+
+    if not app.config.get("SECRET_KEY"):
+        raise RuntimeError("SECRET_KEY não definida. Configure-a no arquivo .env.")
+
     # 2. Inicializa a Infraestrutura (Banco de Dados) de forma explícita
     init_db(app)
     

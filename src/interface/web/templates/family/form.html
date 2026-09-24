@@ -5,15 +5,21 @@
 {% block content %}
 <div class="page-header">
     <h1>{% if family %}Reformular Identidade{% else %}Integrar Nova Família{% endif %}</h1>
-    <a href="{{ url_for('family.index') }}" class="btn" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary);">Voltar à Listagem</a>
+    <a href="{{ url_for('family.list_families') }}" class="btn" style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary);">Voltar à Listagem</a>
 </div>
 
+{% if error %}
+<div style="max-width: 600px; margin: 0 auto 1.5rem; background-color: rgba(218, 54, 51, 0.1); border: 1px solid var(--danger-color); color: var(--danger-color); padding: 1rem; border-radius: 8px; text-align: center; font-weight: 500;">
+    {{ error }}
+</div>
+{% endif %}
+
 <div class="card" style="max-width: 600px; margin: 0 auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-    <form method="POST">
+    <form method="POST" action="{{ form_action }}">
         <div style="margin-bottom: 2rem;">
             <label for="name" style="display: block; margin-bottom: 0.8rem; color: var(--text-secondary); font-weight: 500; font-size: 0.95rem;">Assinatura Oficial / Sobrenome Base</label>
             <input type="text" id="name" name="name" 
-                   value="{% if family %}{{ family.name }}{% endif %}" 
+                   value="{{ name or (family.name if family else '') }}"
                    placeholder="Ex: Família Silva"
                    required
                    autocomplete="off"

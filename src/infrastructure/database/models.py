@@ -1,6 +1,6 @@
 from decimal import Decimal
 from datetime import date
-from sqlalchemy import String, Numeric, Boolean, Date, Enum, ForeignKey, Table, Column, Integer
+from sqlalchemy import String, Numeric, Boolean, Date, Enum, ForeignKey, Table, Column, Integer, Index, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
 from domain.financial.entities import TransactionType, AccountType
 
@@ -20,6 +20,11 @@ class FamilyModel(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     current_balance: Mapped[Decimal] = mapped_column(Numeric(15, 2), default=Decimal('0.00'), nullable=False)
+
+    __table_args__ = (
+        # Unicidade case-insensitive: índice sobre lower(name), não sobre a coluna direta.
+        Index("ix_families_name_lower", func.lower(name), unique=True),
+    )
 
 class MemberModel(Base):
     __tablename__ = "members"

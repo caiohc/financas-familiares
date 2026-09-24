@@ -4,6 +4,7 @@ from typing import List
 from application.dtos.family_dtos import CreateFamilyDTO, UpdateFamilyDTO, FamilyResponseDTO
 from application.interfaces.unit_of_work import AbstractUnitOfWork
 from domain.family.entities import Family
+from domain.family.exceptions import FamilyAlreadyExistsError
 
 class FamilyService:
     """
@@ -22,6 +23,9 @@ class FamilyService:
 
     def create_family(self, dto: CreateFamilyDTO) -> FamilyResponseDTO:
         with self.uow:
+            if self.uow.families.get_by_name(dto.name):
+                raise FamilyAlreadyExistsError(dto.name)
+
             family = Family(name=dto.name)
             self.uow.families.save(family)
             self.uow.commit()
@@ -44,7 +48,11 @@ class FamilyService:
             family = self.uow.families.get_by_id(family_id)
             if not family:
                 raise ValueError(f"Família com ID {family_id} não encontrada.")
-            
+
+            existing = self.uow.families.get_by_name(dto.name)
+            if existing and existing.id != family_id:
+                raise FamilyAlreadyExistsError(dto.name)
+
             family.name = dto.name
             self.uow.families.save(family)
             self.uow.commit()

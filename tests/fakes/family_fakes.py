@@ -20,6 +20,12 @@ class FakeFamilyRepository(FamilyRepository):
     def get_by_id(self, family_id: uuid.UUID) -> Optional[Family]:
         return self.families.get(family_id)
 
+    def get_by_name(self, name: str) -> Optional[Family]:
+        for family in self.families.values():
+            if family.name.lower() == name.lower():
+                return family
+        return None
+
     def list_all(self) -> list[Family]:
         return list(self.families.values())
 

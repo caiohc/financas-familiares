@@ -1,8 +1,11 @@
 import uuid
 from typing import Optional
+from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from domain.family.entities import Family
+from domain.family.exceptions import FamilyAlreadyExistsError
 
 from domain.family.repositories import FamilyRepository
 
@@ -28,11 +31,25 @@ class SQLAlchemyFamilyRepository(FamilyRepository):
 
     def save(self, family: Family) -> None:
         model = self._to_model(family)
-        self.session.merge(model)
-        self.session.flush()
+        try:
+            self.session.merge(model)
+            self.session.flush()
+        except IntegrityError:
+            # Rede de segurança contra corrida entre a checagem em FamilyService
+            # e este flush: outra transação pode ter inserido o mesmo nome nesse meio-tempo.
+            self.session.rollback()
+            raise FamilyAlreadyExistsError(family.name)
 
     def get_by_id(self, family_id: uuid.UUID) -> Optional[Family]:
         model = self.session.get(FamilyModel, str(family_id))
+        return self._to_domain(model) if model else None
+
+    def get_by_name(self, name: str) -> Optional[Family]:
+        model = (
+            self.session.query(FamilyModel)
+            .filter(func.lower(FamilyModel.name) == name.lower())
+            .first()
+        )
         return self._to_domain(model) if model else None
 
     def list_all(self) -> list[Family]:

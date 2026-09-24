@@ -14,6 +14,11 @@ class FamilyRepository(ABC):
         pass
 
     @abstractmethod
+    def get_by_name(self, name: str) -> Optional[Family]:
+        """Busca case-insensitive: nome é único independente de maiúsculas/minúsculas."""
+        pass
+
+    @abstractmethod
     def list_all(self) -> list[Family]:
         pass
 

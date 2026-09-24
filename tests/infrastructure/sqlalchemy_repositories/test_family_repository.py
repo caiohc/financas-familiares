@@ -1,7 +1,9 @@
 from decimal import Decimal
+import pytest
 from sqlalchemy.orm import Session
 
 from domain.family.entities import Family
+from domain.family.exceptions import FamilyAlreadyExistsError
 from infrastructure.repositories.sqlalchemy.sqlalchemy_family_repository import SQLAlchemyFamilyRepository
 
 def test_family_repository_save_and_get(session: Session):
@@ -56,3 +58,25 @@ def test_family_repository_save_and_delete(session: Session):
 
     fetched_family = repo.get_by_id(family.id)
     assert fetched_family is None
+
+def test_get_by_name_is_case_insensitive(session: Session):
+    repo = SQLAlchemyFamilyRepository(session)
+    repo.save(Family(name="Família Silva"))
+    session.flush()
+
+    fetched = repo.get_by_name("família silva")
+
+    assert fetched is not None
+    assert fetched.name == "Família Silva"
+
+def test_get_by_name_returns_none_when_absent(session: Session):
+    repo = SQLAlchemyFamilyRepository(session)
+    assert repo.get_by_name("Família Inexistente") is None
+
+def test_save_duplicate_name_raises_already_exists(session: Session):
+    repo = SQLAlchemyFamilyRepository(session)
+    repo.save(Family(name="Família Silva"))
+    session.flush()
+
+    with pytest.raises(FamilyAlreadyExistsError):
+        repo.save(Family(name="família silva"))

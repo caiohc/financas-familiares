@@ -19,15 +19,26 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'src')))
 from infrastructure.database.models import Base
-from infrastructure.database.database import DATABASE_URL
+from config import Config
 
 target_metadata = Base.metadata
-config.set_main_option("sqlalchemy.url", DATABASE_URL)
+config.set_main_option("sqlalchemy.url", Config.SQLALCHEMY_DATABASE_URI)
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
+
+# Trabalhamos em fatias verticais, entidade por entidade. O autogenerate só
+# deve enxergar as tabelas cuja fatia já chegou na camada de infra; as demais
+# ficam de fora até a vez delas, mesmo já mapeadas em models.py. Ao concluir
+# a fatia de uma nova entidade, adicione suas tabelas aqui.
+TABLES_IN_SCOPE = {"families", "members", "family_cost_centers"}
+
+def include_object(object, name, type_, reflected, compare_to):
+    if type_ == "table":
+        return name in TABLES_IN_SCOPE
+    return True
 
 
 def run_migrations_offline() -> None:
@@ -48,6 +59,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        include_object=include_object,
     )
 
     with context.begin_transaction():
@@ -69,7 +81,9 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection,
+            target_metadata=target_metadata,
+            include_object=include_object,
         )
 
         with context.begin_transaction():
