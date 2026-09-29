@@ -1,5 +1,8 @@
 from application.interfaces.unit_of_work import AbstractUnitOfWork
 from infrastructure.repositories.sqlalchemy.sqlalchemy_family_repository import SQLAlchemyFamilyRepository
+from infrastructure.repositories.sqlalchemy.sqlalchemy_family_cost_center_repository import (
+    SQLAlchemyFamilyCostCenterRepository,
+)
 
 class SQLAlchemyUnitOfWork(AbstractUnitOfWork):
     """
@@ -15,7 +18,8 @@ class SQLAlchemyUnitOfWork(AbstractUnitOfWork):
         
         # Instancia e expõe os repositórios atrelados a esta sessão
         self.families = SQLAlchemyFamilyRepository(self.session)
-        
+        self.family_cost_centers = SQLAlchemyFamilyCostCenterRepository(self.session)
+
         return super().__enter__()
 
     def __exit__(self, exc_type, exc_val, exc_tb):

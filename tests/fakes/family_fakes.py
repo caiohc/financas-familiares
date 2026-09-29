@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional
-from domain.family.repositories import FamilyRepository
-from domain.family.entities import Family
+from domain.family.repositories import FamilyRepository, FamilyCostCenterRepository
+from domain.family.entities import Family, FamilyCostCenter
 from application.interfaces.unit_of_work import AbstractUnitOfWork
 
 
@@ -40,6 +40,35 @@ class FakeFamilyRepository(FamilyRepository):
         """Método auxiliar exclusivo para testes manipularem o estado do Fake."""
         self._has_deps = value
 
+
+class FakeFamilyCostCenterRepository(FamilyCostCenterRepository):
+    """
+    Fake Repository centralizado para testes.
+    Armazena os dados em memória RAM usando um dicionário.
+    """
+    def __init__(self):
+        self.cost_centers = {}
+
+    def save(self, cost_center: FamilyCostCenter) -> None:
+        self.cost_centers[cost_center.id] = cost_center
+
+    def get_by_id(self, cost_center_id: uuid.UUID) -> Optional[FamilyCostCenter]:
+        return self.cost_centers.get(cost_center_id)
+
+    def get_by_name(self, family_id: uuid.UUID, name: str) -> Optional[FamilyCostCenter]:
+        for cost_center in self.cost_centers.values():
+            if cost_center.family_id == family_id and cost_center.name.lower() == name.lower():
+                return cost_center
+        return None
+
+    def list_by_family(self, family_id: uuid.UUID) -> list[FamilyCostCenter]:
+        return [cc for cc in self.cost_centers.values() if cc.family_id == family_id]
+
+    def delete(self, cost_center_id: uuid.UUID) -> None:
+        if cost_center_id in self.cost_centers:
+            del self.cost_centers[cost_center_id]
+
+
 class FakeUnitOfWork(AbstractUnitOfWork):
     """
     Fake UnitOfWork para testes.
@@ -47,6 +76,7 @@ class FakeUnitOfWork(AbstractUnitOfWork):
     """
     def __init__(self):
         self.families = FakeFamilyRepository()
+        self.family_cost_centers = FakeFamilyCostCenterRepository()
         self.committed = False
 
     def __enter__(self):

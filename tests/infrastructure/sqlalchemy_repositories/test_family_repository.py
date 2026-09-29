@@ -1,4 +1,5 @@
 from decimal import Decimal
+import uuid
 import pytest
 from sqlalchemy.orm import Session
 
@@ -59,6 +60,14 @@ def test_family_repository_save_and_delete(session: Session):
     fetched_family = repo.get_by_id(family.id)
     assert fetched_family is None
 
+def test_delete_nonexistent_family_is_a_noop(session: Session):
+    repo = SQLAlchemyFamilyRepository(session)
+
+    # Repositório não conhece "não encontrada" como regra de negócio (isso é
+    # responsabilidade do FamilyService); aqui só confirmamos que não explode.
+    repo.delete(uuid.uuid4())
+    session.flush()
+
 def test_get_by_name_is_case_insensitive(session: Session):
     repo = SQLAlchemyFamilyRepository(session)
     repo.save(Family(name="Família Silva"))
@@ -80,3 +89,14 @@ def test_save_duplicate_name_raises_already_exists(session: Session):
 
     with pytest.raises(FamilyAlreadyExistsError):
         repo.save(Family(name="família silva"))
+
+def test_save_rename_to_duplicate_name_raises_already_exists(session: Session):
+    repo = SQLAlchemyFamilyRepository(session)
+    repo.save(Family(name="Família Silva"))
+    other = Family(name="Família Souza")
+    repo.save(other)
+    session.flush()
+
+    other.name = "família silva"
+    with pytest.raises(FamilyAlreadyExistsError):
+        repo.save(other)

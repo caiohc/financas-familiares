@@ -39,6 +39,11 @@ class FamilyCostCenterModel(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
+    __table_args__ = (
+        # Nome único por família (case-insensitive), famílias diferentes podem repetir nomes.
+        Index("ix_family_cost_centers_family_id_name_lower", "family_id", func.lower(name), unique=True),
+    )
+
 class CategoryModel(Base):
     __tablename__ = "categories"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)

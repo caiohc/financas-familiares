@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}Centros de Custo{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Centros de Custo</h1>
+    <a href="{{ url_for('family_cost_center.new', family_id=family_id) }}" class="btn btn-success">+ Novo Centro de
+        Custo</a>
+</div>
+
+<div class="card" style="padding: 0; overflow: hidden;">
+    <table style="width: 100%; border-collapse: collapse; text-align: left;">
+        <thead>
+            <tr style="background-color: rgba(255, 255, 255, 0.05); border-bottom: 1px solid var(--glass-border);">
+                <th style="padding: 1rem 1.5rem; color: var(--text-secondary); font-weight: 500;">Nome</th>
+                <th style="padding: 1rem 1.5rem; color: var(--text-secondary); font-weight: 500;">Descrição</th>
+                <th style="padding: 1rem 1.5rem; color: var(--text-secondary); font-weight: 500; text-align: right;">
+                    Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cc in cost_centers %}
+            <tr style="border-bottom: 1px solid var(--glass-border); transition: background-color 0.2s;"
+                onmouseover="this.style.backgroundColor='rgba(255,255,255,0.02)'"
+                onmouseout="this.style.backgroundColor='transparent'">
+                <td style="padding: 1rem 1.5rem; font-weight: 600; color: var(--text-primary);">{{ cc.name }}</td>
+                <td style="padding: 1rem 1.5rem; color: var(--text-secondary);">{{ cc.description or '—' }}</td>
+                <td style="padding: 1rem 1.5rem; text-align: right; display: flex; justify-content: flex-end; gap: 0.5rem; border-bottom: none;">
+                    <a href="{{ url_for('family_cost_center.edit', family_id=family_id, cost_center_id=cc.id) }}"
+                        class="btn"
+                        style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background-color: rgba(47, 129, 247, 0.2); color: var(--accent-glow);">✏️
+                        Editar</a>
+                    <form
+                        action="{{ url_for('family_cost_center.delete', family_id=family_id, cost_center_id=cc.id) }}"
+                        method="POST" style="display: inline;"
+                        onsubmit="return confirm('Tem certeza que deseja excluir este centro de custo?');">
+                        <button type="submit" class="btn"
+                            style="padding: 0.4rem 0.8rem; font-size: 0.8rem; background-color: rgba(218, 54, 51, 0.2); color: var(--danger-color); border: none; cursor: pointer;">🗑️
+                            Excluir</button>
+                    </form>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="3" style="padding: 3rem; text-align: center; color: var(--text-secondary);">Nenhum centro
+                    de custo cadastrado para esta família.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

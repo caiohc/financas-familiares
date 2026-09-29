@@ -4,7 +4,11 @@ from typing import List
 from application.dtos.family_dtos import CreateFamilyDTO, UpdateFamilyDTO, FamilyResponseDTO
 from application.interfaces.unit_of_work import AbstractUnitOfWork
 from domain.family.entities import Family
-from domain.family.exceptions import FamilyAlreadyExistsError
+from domain.family.exceptions import (
+    FamilyAlreadyExistsError,
+    FamilyHasDependenciesError,
+    FamilyNotFoundError,
+)
 
 class FamilyService:
     """
@@ -35,7 +39,7 @@ class FamilyService:
         with self.uow:
             family = self.uow.families.get_by_id(family_id)
             if not family:
-                raise ValueError(f"Família com ID {family_id} não encontrada.")
+                raise FamilyNotFoundError(family_id)
             return self._to_dto(family)
 
     def list_families(self) -> List[FamilyResponseDTO]:
@@ -47,7 +51,7 @@ class FamilyService:
         with self.uow:
             family = self.uow.families.get_by_id(family_id)
             if not family:
-                raise ValueError(f"Família com ID {family_id} não encontrada.")
+                raise FamilyNotFoundError(family_id)
 
             existing = self.uow.families.get_by_name(dto.name)
             if existing and existing.id != family_id:
@@ -62,10 +66,10 @@ class FamilyService:
         with self.uow:
             family = self.uow.families.get_by_id(family_id)
             if not family:
-                raise ValueError(f"Família com ID {family_id} não encontrada.")
-                
+                raise FamilyNotFoundError(family_id)
+
             if self.uow.families.has_dependencies(family_id):
-                raise ValueError("Não é possível excluir a família pois existem dependências (membros, contas) vinculadas a ela.")
-            
+                raise FamilyHasDependenciesError(family_id)
+
             self.uow.families.delete(family_id)
             self.uow.commit()

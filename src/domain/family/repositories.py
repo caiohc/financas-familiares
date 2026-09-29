@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from domain.family.entities import Family, Member
+from domain.family.entities import Family, Member, FamilyCostCenter
 from typing import Optional
 import uuid
 
@@ -55,4 +55,28 @@ class MemberRepository(ABC):
 
     @abstractmethod
     def has_dependencies(self, member_id: uuid.UUID) -> bool:
+        pass
+
+
+class FamilyCostCenterRepository(ABC):
+    """Interface para gerenciar Centros de Custo. Nome é único por família, não globalmente."""
+    @abstractmethod
+    def save(self, cost_center: FamilyCostCenter) -> None:
+        pass
+
+    @abstractmethod
+    def get_by_id(self, cost_center_id: uuid.UUID) -> Optional[FamilyCostCenter]:
+        pass
+
+    @abstractmethod
+    def get_by_name(self, family_id: uuid.UUID, name: str) -> Optional[FamilyCostCenter]:
+        """Busca case-insensitive, escopada à família (o mesmo nome pode existir em outra família)."""
+        pass
+
+    @abstractmethod
+    def list_by_family(self, family_id: uuid.UUID) -> list[FamilyCostCenter]:
+        pass
+
+    @abstractmethod
+    def delete(self, cost_center_id: uuid.UUID) -> None:
         pass

@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}{% if cost_center %}Editar Centro de Custo{% else %}Novo Centro de Custo{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{% if cost_center %}Editar Centro de Custo{% else %}Novo Centro de Custo{% endif %}</h1>
+    <a href="{{ url_for('family_cost_center.list_family_cost_centers', family_id=family_id) }}" class="btn"
+        style="background: transparent; border: 1px solid var(--glass-border); color: var(--text-secondary);">Voltar à
+        Listagem</a>
+</div>
+
+{% if error %}
+<div
+    style="max-width: 600px; margin: 0 auto 1.5rem; background-color: rgba(218, 54, 51, 0.1); border: 1px solid var(--danger-color); color: var(--danger-color); padding: 1rem; border-radius: 8px; text-align: center; font-weight: 500;">
+    {{ error }}
+</div>
+{% endif %}
+
+<div class="card" style="max-width: 600px; margin: 0 auto; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+    <form method="POST" action="{{ form_action }}">
+        <div style="margin-bottom: 2rem;">
+            <label for="name"
+                style="display: block; margin-bottom: 0.8rem; color: var(--text-secondary); font-weight: 500; font-size: 0.95rem;">Nome</label>
+            <input type="text" id="name" name="name" value="{{ name or (cost_center.name if cost_center else '') }}"
+                placeholder="Ex: Casa de Praia" required autocomplete="off" style="width: 100%; padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border);
+                          background-color: rgba(0,0,0,0.3); color: var(--text-primary); font-size: 1.1rem;
+                          outline: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); transition: border-color 0.2s;">
+        </div>
+
+        <div style="margin-bottom: 2rem;">
+            <label for="description"
+                style="display: block; margin-bottom: 0.8rem; color: var(--text-secondary); font-weight: 500; font-size: 0.95rem;">Descrição
+                (opcional)</label>
+            <input type="text" id="description" name="description"
+                value="{{ description or (cost_center.description if cost_center and cost_center.description else '') }}"
+                placeholder="Ex: Despesas da casa de praia" autocomplete="off" style="width: 100%; padding: 1rem; border-radius: 8px; border: 1px solid var(--glass-border);
+                          background-color: rgba(0,0,0,0.3); color: var(--text-primary); font-size: 1.1rem;
+                          outline: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.2); transition: border-color 0.2s;">
+        </div>
+
+        <div
+            style="display: flex; gap: 1rem; justify-content: flex-end; padding-top: 1rem; border-top: 1px solid var(--glass-border);">
+            <button type="submit" class="btn btn-success" style="padding: 0.8rem 2rem; font-size: 1rem;">
+                Salvar
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

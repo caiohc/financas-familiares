@@ -88,6 +88,18 @@ def test_update_family_to_another_familys_name_raises(service: FamilyService, uo
     with pytest.raises(FamilyAlreadyExistsError):
         service.update_family(other.id, UpdateFamilyDTO(name="Família Silva"))
 
+def test_update_family_to_another_familys_name_ignoring_case_raises(service: FamilyService, uow: FakeUnitOfWork):
+    uow.families.save(Family(name="Família Silva"))
+    other = Family(name="Família Souza")
+    uow.families.save(other)
+
+    with pytest.raises(FamilyAlreadyExistsError):
+        service.update_family(other.id, UpdateFamilyDTO(name="família silva"))
+
+def test_update_family_not_found(service: FamilyService):
+    with pytest.raises(ValueError, match="não encontrada"):
+        service.update_family(uuid.uuid4(), UpdateFamilyDTO(name="Qualquer Nome"))
+
 def test_delete_family_success(service: FamilyService, uow: FakeUnitOfWork):
     family = Family(name="Família a deletar")
     uow.families.save(family)
@@ -100,6 +112,10 @@ def test_delete_family_with_dependencies(service: FamilyService, uow: FakeUnitOf
     family = Family(name="Família Mãe")
     uow.families.save(family)
     uow.families.set_has_dependencies(True)
-    
+
     with pytest.raises(ValueError, match="(?i)não é possível excluir a família pois existem dependências"):
         service.delete_family(family.id)
+
+def test_delete_family_not_found(service: FamilyService):
+    with pytest.raises(ValueError, match="não encontrada"):
+        service.delete_family(uuid.uuid4())
