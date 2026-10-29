@@ -2,97 +2,20 @@ import uuid
 from typing import Optional, List
 from sqlalchemy.orm import Session
 
-from domain.family.entities import Family, Member
-from domain.family.repositories import FamilyRepository, MemberRepository
+from domain.family.entities import Family
+from domain.family.repositories import FamilyRepository
 
 from domain.financial.entities import (
-    Category, BankAccount, CreditCard, CardInstance, 
+    BankAccount, CreditCard, CardInstance, 
     Transaction, CreditCardBill, TransactionType
 )
 from domain.financial.repositories import (
-    CategoryRepository, 
     BankAccountRepository, CreditCardRepository, TransactionRepository, CreditCardBillRepository
 )
 from infrastructure.database.models import (
-    FamilyModel, MemberModel, CategoryModel, BankAccountModel, 
+    FamilyModel, BankAccountModel, 
     CreditCardModel, CardInstanceModel, TransactionModel, CreditCardBillModel, TransferModel
 )
-
-class SQLAlchemyMemberRepository(MemberRepository):
-    def __init__(self, session: Session):
-        self.session = session
-
-    def _to_domain(self, model: MemberModel) -> Member:
-        return Member(
-            id=uuid.UUID(model.id),
-            family_id=uuid.UUID(model.family_id),
-            name=model.name
-        )
-
-    def _to_model(self, entity: Member) -> MemberModel:
-        return MemberModel(
-            id=str(entity.id),
-            family_id=str(entity.family_id),
-            name=entity.name
-        )
-
-    def save(self, member: Member) -> None:
-        model = self._to_model(member)
-        self.session.merge(model)
-        self.session.flush()
-
-    def get_by_id(self, member_id: uuid.UUID) -> Optional[Member]:
-        model = self.session.get(MemberModel, str(member_id))
-        return self._to_domain(model) if model else None
-
-    def list_by_family(self, family_id: uuid.UUID) -> list[Member]:
-        models = self.session.query(MemberModel).filter_by(family_id=str(family_id)).all()
-        return [self._to_domain(m) for m in models]
-
-    def list_all(self) -> list[Member]:
-        models = self.session.query(MemberModel).all()
-        return [self._to_domain(m) for m in models]
-
-    def delete(self, member_id: uuid.UUID) -> None:
-        model = self.session.get(MemberModel, str(member_id))
-        if model:
-            self.session.delete(model)
-            self.session.flush()
-
-    def has_dependencies(self, member_id: uuid.UUID) -> bool:
-        from infrastructure.database.models import AccountModel
-        return self.session.query(AccountModel).filter_by(holder_id=str(member_id)).first() is not None
-
-class SQLAlchemyCategoryRepository(CategoryRepository):
-    def __init__(self, session: Session):
-        self.session = session
-
-    def _to_domain(self, model: CategoryModel) -> Category:
-        return Category(
-            id=uuid.UUID(model.id),
-            name=model.name,
-            type=model.type
-        )
-
-    def _to_model(self, entity: Category) -> CategoryModel:
-        return CategoryModel(
-            id=str(entity.id),
-            name=entity.name,
-            type=entity.type
-        )
-
-    def save(self, category: Category) -> None:
-        model = self._to_model(category)
-        self.session.merge(model)
-        self.session.flush()
-
-    def get_by_id(self, category_id: uuid.UUID) -> Optional[Category]:
-        model = self.session.get(CategoryModel, str(category_id))
-        return self._to_domain(model) if model else None
-
-    def list_all(self) -> list[Category]:
-        models = self.session.query(CategoryModel).all()
-        return [self._to_domain(m) for m in models]
 
 class SQLAlchemyBankAccountRepository(BankAccountRepository):
     def __init__(self, session: Session):

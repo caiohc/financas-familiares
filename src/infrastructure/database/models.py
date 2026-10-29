@@ -32,6 +32,11 @@ class MemberModel(Base):
     family_id: Mapped[str] = mapped_column(String(36), ForeignKey("families.id", ondelete="CASCADE"), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
 
+    __table_args__ = (
+        # Nome único por família (case-insensitive), famílias diferentes podem repetir nomes.
+        Index("ix_members_family_id_name_lower", "family_id", func.lower(name), unique=True),
+    )
+
 class FamilyCostCenterModel(Base):
     __tablename__ = "family_cost_centers"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
@@ -49,6 +54,11 @@ class CategoryModel(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     type: Mapped[TransactionType] = mapped_column(Enum(TransactionType), nullable=False)
+
+    __table_args__ = (
+        # Categorias são globais: nome único em toda a base (case-insensitive), independente do tipo.
+        Index("ix_categories_name_lower", func.lower(name), unique=True),
+    )
 
 # -- HIERARQUIA DE CONTAS (Class Table Inheritance) --
 class AccountModel(Base):

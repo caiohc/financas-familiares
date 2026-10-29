@@ -1,10 +1,11 @@
 from flask import Blueprint, request, redirect, render_template, url_for, current_app, flash, abort
 from application.dtos.family_dtos import CreateFamilyDTO, UpdateFamilyDTO
 from application.services.family_service import FamilyService
-from domain.family.exceptions import (
-    FamilyAlreadyExistsError,
-    FamilyHasDependenciesError,
-    FamilyNotFoundError,
+from domain.shared.exceptions import (
+    DomainValidationError,
+    EntityAlreadyExistsError,
+    EntityHasDependenciesError,
+    EntityNotFoundError,
 )
 
 bp = Blueprint('family', __name__)
@@ -29,8 +30,10 @@ def create():
     service = get_family_service()
     try:
         service.create_family(dto)
-    except FamilyAlreadyExistsError as error:
+    except EntityAlreadyExistsError as error:
         return _render_form(form_action=url_for('family.create'), name=name, error=str(error), status=409)
+    except DomainValidationError as error:
+        return _render_form(form_action=url_for('family.create'), name=name, error=str(error), status=400)
 
     flash(f'Família "{name}" criada com sucesso.', "success")
 
@@ -42,7 +45,7 @@ def edit(family_id):
     service = get_family_service()
     try:
         family = service.get_family(family_id)
-    except FamilyNotFoundError:
+    except EntityNotFoundError:
         abort(404)
 
     return _render_form(form_action=url_for('family.update', family_id=family_id), family=family)
@@ -55,26 +58,48 @@ def update(family_id):
     service = get_family_service()
     try:
         service.update_family(family_id, dto)
-    except FamilyAlreadyExistsError as error:
+    except EntityAlreadyExistsError as error:
         return _render_form(
             form_action=url_for('family.update', family_id=family_id),
             name=name, error=str(error), status=409,
         )
-    except FamilyNotFoundError:
+    except DomainValidationError as error:
+        return _render_form(
+            form_action=url_for('family.update', family_id=family_id),
+            name=name, error=str(error), status=400,
+        )
+    except EntityNotFoundError:
         abort(404)
 
     flash(f'Família "{name}" atualizada com sucesso.', "success")
 
     return redirect(url_for('family.list_families'))
 
+@bp.route('/confirm-delete/<uuid:family_id>', methods=['GET'])
+def confirm_delete(family_id):
+    try:
+        preview = get_family_service().preview_family_deletion(family_id)
+    except EntityNotFoundError:
+        abort(404)
+
+    return render_template(
+        'confirm_delete.html',
+        title="Excluir família",
+        question="Tem certeza que deseja excluir esta família?",
+        item_name=preview.name,
+        blocked_reason=preview.blocked_reason,
+        delete_action=url_for('family.delete', family_id=family_id),
+        cancel_url=url_for('family.list_families'),
+    )
+
 @bp.route('/delete/<uuid:family_id>', methods=['POST'])
 def delete(family_id):
     service = get_family_service()
     try:
         service.delete_family(family_id)
-    except FamilyNotFoundError:
+    except EntityNotFoundError:
         abort(404)
-    except FamilyHasDependenciesError as error:
+    except EntityHasDependenciesError as error:
         flash(str(error), "error")
         return redirect(url_for('family.list_families'))
 

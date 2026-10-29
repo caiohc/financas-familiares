@@ -3,7 +3,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from domain.family.entities import Family, FamilyCostCenter
-from domain.family.exceptions import FamilyCostCenterAlreadyExistsError
+from domain.shared.exceptions import EntityAlreadyExistsError
 from infrastructure.repositories.sqlalchemy.sqlalchemy_family_repository import SQLAlchemyFamilyRepository
 from infrastructure.repositories.sqlalchemy.sqlalchemy_family_cost_center_repository import (
     SQLAlchemyFamilyCostCenterRepository,
@@ -85,7 +85,7 @@ def test_save_duplicate_name_in_same_family_raises_already_exists(session: Sessi
     repo.save(FamilyCostCenter(family_id=family.id, name="Casa de Praia"))
     session.flush()
 
-    with pytest.raises(FamilyCostCenterAlreadyExistsError):
+    with pytest.raises(EntityAlreadyExistsError):
         repo.save(FamilyCostCenter(family_id=family.id, name="casa de praia"))
 
 def test_save_same_name_in_different_families_is_allowed(session: Session):
@@ -101,3 +101,43 @@ def test_save_same_name_in_different_families_is_allowed(session: Session):
 
     assert len(repo.list_by_family(family_a.id)) == 1
     assert len(repo.list_by_family(family_b.id)) == 1
+
+def test_list_all_returns_cost_centers_across_families(session: Session):
+    family_a = _create_family(session, "Família All A")
+    family_b = _create_family(session, "Família All B")
+    repo = SQLAlchemyFamilyCostCenterRepository(session)
+    repo.save(FamilyCostCenter(family_id=family_a.id, name="Casa de Praia"))
+    repo.save(FamilyCostCenter(family_id=family_b.id, name="Filhos"))
+    session.flush()
+
+    result = repo.list_all()
+    assert {cc.name for cc in result} == {"Casa de Praia", "Filhos"}
+
+def test_cost_center_without_transactions_has_no_dependencies(session: Session):
+    family = _create_family(session, "Família CC Sem Deps")
+    repo = SQLAlchemyFamilyCostCenterRepository(session)
+    cost_center = FamilyCostCenter(family_id=family.id, name="Praia")
+    repo.save(cost_center)
+    session.flush()
+
+    assert repo.has_dependencies(cost_center.id) is False
+
+def test_cost_center_used_by_a_transaction_has_dependencies(session: Session):
+    from datetime import date
+    from decimal import Decimal
+    from domain.financial.entities import TransactionType
+    from infrastructure.database.models import TransactionModel
+
+    family = _create_family(session, "Família CC Com Transação")
+    repo = SQLAlchemyFamilyCostCenterRepository(session)
+    cost_center = FamilyCostCenter(family_id=family.id, name="Praia")
+    repo.save(cost_center)
+    session.add(TransactionModel(
+        id=str(uuid.uuid4()), family_id=str(family.id), category_id=str(uuid.uuid4()),
+        type=TransactionType.EXPENSE, accrual_date=date(2026, 10, 1), due_date=date(2026, 10, 10),
+        amount=Decimal("10.00"), description="Sorvete", account_id=str(uuid.uuid4()),
+        cost_center_id=str(cost_center.id),
+    ))
+    session.flush()
+
+    assert repo.has_dependencies(cost_center.id) is True

@@ -5,10 +5,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from domain.family.entities import FamilyCostCenter
-from domain.family.exceptions import FamilyCostCenterAlreadyExistsError
+from domain.family.exceptions import cost_center_already_exists
 from domain.family.repositories import FamilyCostCenterRepository
 
 from infrastructure.database.models import FamilyCostCenterModel
+from infrastructure.repositories.sqlalchemy.dependencies import has_dependent_rows
 
 class SQLAlchemyFamilyCostCenterRepository(FamilyCostCenterRepository):
     def __init__(self, session: Session):
@@ -39,7 +40,7 @@ class SQLAlchemyFamilyCostCenterRepository(FamilyCostCenterRepository):
             # Rede de segurança contra corrida entre a checagem em
             # FamilyCostCenterService e este flush.
             self.session.rollback()
-            raise FamilyCostCenterAlreadyExistsError(cost_center.family_id, cost_center.name)
+            raise cost_center_already_exists(cost_center.name)
 
     def get_by_id(self, cost_center_id: uuid.UUID) -> Optional[FamilyCostCenter]:
         model = self.session.get(FamilyCostCenterModel, str(cost_center_id))
@@ -64,8 +65,15 @@ class SQLAlchemyFamilyCostCenterRepository(FamilyCostCenterRepository):
         )
         return [self._to_domain(m) for m in models]
 
+    def list_all(self) -> list[FamilyCostCenter]:
+        models = self.session.query(FamilyCostCenterModel).all()
+        return [self._to_domain(m) for m in models]
+
     def delete(self, cost_center_id: uuid.UUID) -> None:
         model = self.session.get(FamilyCostCenterModel, str(cost_center_id))
         if model:
             self.session.delete(model)
             self.session.flush()
+
+    def has_dependencies(self, cost_center_id: uuid.UUID) -> bool:
+        return has_dependent_rows(self.session, FamilyCostCenterModel.__tablename__, str(cost_center_id))

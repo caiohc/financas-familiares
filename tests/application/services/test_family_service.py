@@ -6,7 +6,7 @@ from typing import Optional
 from application.dtos.family_dtos import CreateFamilyDTO, UpdateFamilyDTO
 from application.services.family_service import FamilyService
 from domain.family.entities import Family
-from domain.family.exceptions import FamilyAlreadyExistsError
+from domain.shared.exceptions import EntityAlreadyExistsError
 from fakes.family_fakes import FakeUnitOfWork
 
 @pytest.fixture
@@ -34,13 +34,13 @@ def test_create_family(service: FamilyService, uow: FakeUnitOfWork):
 def test_create_family_with_duplicate_name_raises(service: FamilyService, uow: FakeUnitOfWork):
     uow.families.save(Family(name="Família Silva"))
 
-    with pytest.raises(FamilyAlreadyExistsError):
+    with pytest.raises(EntityAlreadyExistsError):
         service.create_family(CreateFamilyDTO(name="Família Silva"))
 
 def test_create_family_with_duplicate_name_ignoring_case_raises(service: FamilyService, uow: FakeUnitOfWork):
     uow.families.save(Family(name="Família Silva"))
 
-    with pytest.raises(FamilyAlreadyExistsError):
+    with pytest.raises(EntityAlreadyExistsError):
         service.create_family(CreateFamilyDTO(name="família silva"))
 
 def test_get_family(service: FamilyService, uow: FakeUnitOfWork):
@@ -85,7 +85,7 @@ def test_update_family_to_another_familys_name_raises(service: FamilyService, uo
     other = Family(name="Família Souza")
     uow.families.save(other)
 
-    with pytest.raises(FamilyAlreadyExistsError):
+    with pytest.raises(EntityAlreadyExistsError):
         service.update_family(other.id, UpdateFamilyDTO(name="Família Silva"))
 
 def test_update_family_to_another_familys_name_ignoring_case_raises(service: FamilyService, uow: FakeUnitOfWork):
@@ -93,7 +93,7 @@ def test_update_family_to_another_familys_name_ignoring_case_raises(service: Fam
     other = Family(name="Família Souza")
     uow.families.save(other)
 
-    with pytest.raises(FamilyAlreadyExistsError):
+    with pytest.raises(EntityAlreadyExistsError):
         service.update_family(other.id, UpdateFamilyDTO(name="família silva"))
 
 def test_update_family_not_found(service: FamilyService):
@@ -119,3 +119,37 @@ def test_delete_family_with_dependencies(service: FamilyService, uow: FakeUnitOf
 def test_delete_family_not_found(service: FamilyService):
     with pytest.raises(ValueError, match="não encontrada"):
         service.delete_family(uuid.uuid4())
+
+
+def test_preview_family_deletion_without_dependencies(service, uow):
+    family = Family(name="Silva")
+    uow.families.save(family)
+
+    preview = service.preview_family_deletion(family.id)
+
+    assert (preview.name, preview.blocked_reason) == ("Silva", None)
+
+def test_preview_family_deletion_with_dependencies_gives_the_reason(service, uow):
+    from domain.family.exceptions import family_has_dependencies
+
+    family = Family(name="Silva")
+    uow.families.save(family)
+    uow.families.set_has_dependencies(True)
+
+    preview = service.preview_family_deletion(family.id)
+
+    assert preview.name == "Silva"
+    assert preview.blocked_reason == str(family_has_dependencies(family.id))
+
+def test_preview_family_deletion_not_found(service):
+    from domain.shared.exceptions import EntityNotFoundError
+
+    with pytest.raises(EntityNotFoundError):
+        service.preview_family_deletion(uuid.uuid4())
+
+
+def test_list_families_is_ordered_by_name(service, uow):
+    for name in ("Souza", "almeida", "Costa"):
+        uow.families.save(Family(name=name))
+
+    assert [f.name for f in service.list_families()] == ["almeida", "Costa", "Souza"]

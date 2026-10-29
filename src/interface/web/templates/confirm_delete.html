@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{# Confirmação de exclusão no servidor, compartilhada por todas as entidades.
+   Substitui o confirm() do navegador, que alguns navegadores embutidos
+   suprimem (devolvendo false e cancelando o envio sem aviso).
+   Se o registro tem dependências, a página já explica o bloqueio e não
+   oferece o botão Excluir: a pessoa não confirma algo que vai falhar. #}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{{ title }}</h1>
+</div>
+
+<div class="card card-narrow">
+    {% if blocked_reason %}
+    <p class="confirm-item">{{ item_name }}</p>
+    <div class="alert alert-error">{{ blocked_reason }}</div>
+
+    <div class="form-actions">
+        <a href="{{ cancel_url }}" class="btn btn-ghost btn-lg">Voltar à listagem</a>
+    </div>
+    {% else %}
+    <p class="confirm-question">{{ question }}</p>
+    <p class="confirm-item">{{ item_name }}</p>
+
+    <form method="POST" action="{{ delete_action }}" class="form-actions">
+        <a href="{{ cancel_url }}" class="btn btn-ghost btn-lg">Cancelar</a>
+        <button type="submit" class="btn btn-danger btn-lg">Excluir</button>
+    </form>
+    {% endif %}
+</div>
+{% endblock %}

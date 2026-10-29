@@ -11,6 +11,8 @@ from datetime import date
 from enum import Enum
 from typing import Optional
 
+from domain.shared.exceptions import DomainValidationError
+
 
 class TransactionType(Enum):
 
@@ -207,11 +209,27 @@ class Category:
     name: str
     type: TransactionType
 
+    @staticmethod
+    def normalize_name(name: Optional[str]) -> str:
+        if not name or not name.strip():
+            raise DomainValidationError("name", "Nome da categoria é obrigatório.")
+        return name.strip()
+
+    @staticmethod
+    def validate_type(type_: Optional[TransactionType]) -> TransactionType:
+        if not isinstance(type_, TransactionType):
+            raise DomainValidationError("type", "Tipo da categoria é obrigatório.")
+        return type_
+
     def __post_init__(self):
-        if not self.name or not self.name.strip():
-            raise ValueError("Nome da categoria é obrigatório.")
-        if not self.type:
-            raise ValueError("Tipo da categoria é obrigatório.")
+        self.name = self.normalize_name(self.name)
+        self.type = self.validate_type(self.type)
+
+    def rename(self, new_name: Optional[str]) -> None:
+        self.name = self.normalize_name(new_name)
+
+    def change_type(self, new_type: Optional[TransactionType]) -> None:
+        self.type = self.validate_type(new_type)
 
 
 @dataclass(kw_only=True)

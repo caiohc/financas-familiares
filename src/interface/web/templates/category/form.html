@@ -1,37 +1,38 @@
 {% extends "base.html" %}
 
-{% block title %}{{ 'Editar' if category else 'Nova' }} Categoria{% endblock %}
+{% block title %}{% if category %}Editar categoria{% else %}Nova categoria{% endif %}{% endblock %}
 
 {% block content %}
 <div class="page-header">
-    <h1>{{ 'Editar' if category else 'Nova' }} Categoria</h1>
-    <a href="{{ url_for('category.index') }}" class="btn" style="background-color: transparent; border: 1px solid var(--glass-border);">Voltar</a>
+    <h1>{% if category %}Editar categoria{% else %}Nova categoria{% endif %}</h1>
+    <a href="{{ url_for('category.list_categories') }}" class="btn btn-ghost">Voltar à listagem</a>
 </div>
 
-<div class="card" style="max-width: 600px; margin: 0 auto;">
-    <form method="POST">
+{% if error %}
+<div class="alert alert-error alert-narrow">{{ error }}</div>
+{% endif %}
+
+<div class="card card-narrow">
+    <form method="POST" action="{{ form_action }}">
         <div class="form-group">
-            <label for="name" style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Nome da Categoria</label>
-            <input type="text" id="name" name="name" class="form-control" style="width: 100%; padding: 0.8rem; border-radius: 8px; border: 1px solid var(--glass-border); background-color: rgba(0,0,0,0.2); color: var(--text-primary); margin-bottom: 1.5rem;" value="{{ category.name if category else '' }}" placeholder="Ex: Mercado" required>
-        </div>
-        
-        <div class="form-group">
-            <label style="display: block; margin-bottom: 0.5rem; color: var(--text-secondary);">Tipo da Transação</label>
-            <div style="display: flex; gap: 1rem; margin-bottom: 2rem;">
-                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                    <input type="radio" name="type" value="EXPENSE" {% if not category or category.type.value == 'EXPENSE' %}checked{% endif %}>
-                    Despesa
-                </label>
-                <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                    <input type="radio" name="type" value="INCOME" {% if category and category.type.value == 'INCOME' %}checked{% endif %}>
-                    Receita
-                </label>
-            </div>
+            <label for="name" class="form-label">Nome</label>
+            <input type="text" id="name" name="name" value="{{ name or (category.name if category else '') }}"
+                placeholder="Ex: Alimentação" required autocomplete="off" class="form-control">
         </div>
 
-        <button type="submit" class="btn btn-success" style="width: 100%; padding: 1rem; font-size: 1.1rem;">
-            {{ 'Salvar Alterações' if category else 'Criar Categoria' }}
-        </button>
+        <div class="form-group">
+            <label for="type" class="form-label">Tipo</label>
+            <select id="type" name="type" required class="form-control">
+                <option value="" disabled {% if not selected_type %}selected{% endif %}>Selecione o tipo</option>
+                {% for type_, label in type_labels.items() %}
+                <option value="{{ type_.value }}" {% if type_ == selected_type %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-success btn-lg">Salvar</button>
+        </div>
     </form>
 </div>
 {% endblock %}

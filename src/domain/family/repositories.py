@@ -32,13 +32,18 @@ class FamilyRepository(ABC):
 
 
 class MemberRepository(ABC):
-    """Interface para gerenciar Membros. O contexto financeiro dita as buscas atreladas à Família."""
+    """Interface para gerenciar Membros. Nome é único por família, não globalmente."""
     @abstractmethod
     def save(self, member: Member) -> None:
         pass
 
     @abstractmethod
     def get_by_id(self, member_id: uuid.UUID) -> Optional[Member]:
+        pass
+
+    @abstractmethod
+    def get_by_name(self, family_id: uuid.UUID, name: str) -> Optional[Member]:
+        """Busca case-insensitive, escopada à família (o mesmo nome pode existir em outra família)."""
         pass
 
     @abstractmethod
@@ -78,5 +83,19 @@ class FamilyCostCenterRepository(ABC):
         pass
 
     @abstractmethod
+    def list_all(self) -> list[FamilyCostCenter]:
+        """
+        Provisório: lista todos os centros de custo, cruzando famílias.
+        Existe só porque a interface web ainda não tem autenticação/sessão de
+        usuário para resolver "a família do usuário atual" (ver decisão do
+        item de menu). Revisitar quando login existir.
+        """
+        pass
+
+    @abstractmethod
     def delete(self, cost_center_id: uuid.UUID) -> None:
+        pass
+
+    @abstractmethod
+    def has_dependencies(self, cost_center_id: uuid.UUID) -> bool:
         pass

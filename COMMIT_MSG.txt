@@ -1,0 +1,38 @@
+WIP: fatia Família completa (Family, Member, FamilyCostCenter) + Categoria e Dashboard
+
+- Fatia Família (Family, Member, FamilyCostCenter):
+  - Entidades revalidam invariantes em mutação (normalize_name, rename);
+    nomes com strip e únicos case-insensitive (índices funcionais lower(name),
+    escritos à mão nas migrations, pois o autogenerate não os detecta).
+  - CRUD completo de Member (novo): repositório, MemberService, rotas
+    controller-style planas em /member, templates e testes em todas as camadas.
+  - FamilyCostCenter em rotas planas /cost-center (sem aninhar em família),
+    com seletor de família no formulário; listagens provisoriamente globais
+    até existir autenticação.
+  - Regra: entidades só podem ser excluídas se não houver qualquer
+    dependência (has_dependent_rows, derivado das FKs do Base.metadata,
+    ignorando tabelas ainda não migradas).
+  - Confirmação de exclusão no servidor (confirm_delete.html +
+    preview_<entidade>_deletion -> DeletionPreviewDTO), substituindo o
+    confirm() do navegador, suprimido no navegador embutido.
+
+- Modelo de exceções de domínio compartilhado (domain/shared/exceptions.py):
+  DomainValidationError, EntityNotFoundError, EntityAlreadyExistsError e
+  EntityHasDependenciesError, criadas por funções-fábrica por domínio com
+  mensagens em pt-BR.
+
+- Fatia Categoria (reescrita): entidade, repositório, serviço, rotas em
+  /category, templates e comando CLI idempotente `flask seed-categories`.
+
+- Dashboard em /: contagem por entidade com links para as listagens.
+
+- UI: design system em static/css/app.css (sem CSS inline), ícones SVG em
+  _icons.html, item ativo na barra lateral, textos em sentence case.
+
+- Infra: UoW expõe members e categories; Alembic com TABLES_IN_SCOPE
+  ampliado; remove código legado (bootstrap.py, routes/member.py,
+  routes/category.py, routes/home.py).
+
+288 testes passando.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>

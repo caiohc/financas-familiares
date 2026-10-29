@@ -14,7 +14,7 @@ from domain.financial.entities import (
 
 
 class CategoryRepository(ABC):
-    """Interface para buscar as taxonomias das classificações que provamos serem Globais."""
+    """Interface das categorias. São globais (sem família) e o nome é único, sem diferenciar caixa."""
     @abstractmethod
     def save(self, category: Category) -> None:
         pass
@@ -24,7 +24,20 @@ class CategoryRepository(ABC):
         pass
 
     @abstractmethod
+    def get_by_name(self, name: str) -> Optional[Category]:
+        """Busca case-insensitive."""
+        pass
+
+    @abstractmethod
     def list_all(self) -> list[Category]:
+        pass
+
+    @abstractmethod
+    def delete(self, category_id: uuid.UUID) -> None:
+        pass
+
+    @abstractmethod
+    def has_dependencies(self, category_id: uuid.UUID) -> bool:
         pass
 
 

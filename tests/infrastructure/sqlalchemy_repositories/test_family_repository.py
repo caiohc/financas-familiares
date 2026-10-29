@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from domain.family.entities import Family
-from domain.family.exceptions import FamilyAlreadyExistsError
+from domain.shared.exceptions import EntityAlreadyExistsError
 from infrastructure.repositories.sqlalchemy.sqlalchemy_family_repository import SQLAlchemyFamilyRepository
 
 def test_family_repository_save_and_get(session: Session):
@@ -87,7 +87,7 @@ def test_save_duplicate_name_raises_already_exists(session: Session):
     repo.save(Family(name="Família Silva"))
     session.flush()
 
-    with pytest.raises(FamilyAlreadyExistsError):
+    with pytest.raises(EntityAlreadyExistsError):
         repo.save(Family(name="família silva"))
 
 def test_save_rename_to_duplicate_name_raises_already_exists(session: Session):
@@ -98,5 +98,59 @@ def test_save_rename_to_duplicate_name_raises_already_exists(session: Session):
     session.flush()
 
     other.name = "família silva"
-    with pytest.raises(FamilyAlreadyExistsError):
+    with pytest.raises(EntityAlreadyExistsError):
         repo.save(other)
+
+def test_family_without_dependents_has_no_dependencies(session: Session):
+    repo = SQLAlchemyFamilyRepository(session)
+    family = Family(name="Família Sem Deps")
+    repo.save(family)
+    session.flush()
+
+    assert repo.has_dependencies(family.id) is False
+
+def test_family_with_a_member_has_dependencies(session: Session):
+    from domain.family.entities import Member
+    from infrastructure.repositories.sqlalchemy.sqlalchemy_member_repository import SQLAlchemyMemberRepository
+
+    repo = SQLAlchemyFamilyRepository(session)
+    family = Family(name="Família Com Membro")
+    repo.save(family)
+    SQLAlchemyMemberRepository(session).save(Member(family_id=family.id, name="João"))
+    session.flush()
+
+    assert repo.has_dependencies(family.id) is True
+
+def test_family_with_only_a_cost_center_has_dependencies(session: Session):
+    from domain.family.entities import FamilyCostCenter
+    from infrastructure.repositories.sqlalchemy.sqlalchemy_family_cost_center_repository import (
+        SQLAlchemyFamilyCostCenterRepository,
+    )
+
+    repo = SQLAlchemyFamilyRepository(session)
+    family = Family(name="Família Com Centro de Custo")
+    repo.save(family)
+    SQLAlchemyFamilyCostCenterRepository(session).save(FamilyCostCenter(family_id=family.id, name="Praia"))
+    session.flush()
+
+    assert repo.has_dependencies(family.id) is True
+
+def test_dependent_table_missing_from_the_database_counts_as_no_dependency():
+    # Banco real hoje: só as tabelas das fatias já migradas (sem accounts, transactions...).
+    # Consultar uma tabela inexistente daria erro; sem tabela, não há registro dependente.
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from infrastructure.database.models import Base
+
+    engine = create_engine("sqlite+pysqlite:///:memory:")
+    migrated = [Base.metadata.tables[name] for name in ("families", "members", "family_cost_centers")]
+    Base.metadata.create_all(engine, tables=migrated)
+    session = sessionmaker(bind=engine)()
+
+    repo = SQLAlchemyFamilyRepository(session)
+    family = Family(name="Família Banco Parcial")
+    repo.save(family)
+    session.flush()
+
+    assert repo.has_dependencies(family.id) is False
+    session.close()

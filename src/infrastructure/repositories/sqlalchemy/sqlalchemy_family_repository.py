@@ -5,11 +5,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from domain.family.entities import Family
-from domain.family.exceptions import FamilyAlreadyExistsError
+from domain.family.exceptions import family_already_exists
 
 from domain.family.repositories import FamilyRepository
 
-from infrastructure.database.models import FamilyModel, MemberModel
+from infrastructure.database.models import FamilyModel
+from infrastructure.repositories.sqlalchemy.dependencies import has_dependent_rows
 
 class SQLAlchemyFamilyRepository(FamilyRepository):
     def __init__(self, session: Session):
@@ -38,7 +39,7 @@ class SQLAlchemyFamilyRepository(FamilyRepository):
             # Rede de segurança contra corrida entre a checagem em FamilyService
             # e este flush: outra transação pode ter inserido o mesmo nome nesse meio-tempo.
             self.session.rollback()
-            raise FamilyAlreadyExistsError(family.name)
+            raise family_already_exists(family.name)
 
     def get_by_id(self, family_id: uuid.UUID) -> Optional[Family]:
         model = self.session.get(FamilyModel, str(family_id))
@@ -63,5 +64,5 @@ class SQLAlchemyFamilyRepository(FamilyRepository):
             self.session.flush()
 
     def has_dependencies(self, family_id: uuid.UUID) -> bool:
-        return self.session.query(MemberModel).filter_by(family_id=str(family_id)).first() is not None
+        return has_dependent_rows(self.session, FamilyModel.__tablename__, str(family_id))
 

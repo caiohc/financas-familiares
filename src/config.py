@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
 # Carrega as variáveis de ambiente do arquivo .env
@@ -13,6 +14,11 @@ class Config:
 
     # Chave usada para assinar o cookie de sessão (ex: flash messages).
     SECRET_KEY = os.getenv("SECRET_KEY")
+
+    # JSON com as categorias padrão, usado pelo comando `flask seed-categories`.
+    CATEGORIES_PATH = os.getenv(
+        "CATEGORIES_PATH", str(Path(__file__).parent / "resources" / "default_categories.json")
+    )
 
     # 2. Outras configurações de infraestrutura
     DEBUG = os.getenv("FLASK_DEBUG", "True").lower() in ("true", "1", "t")

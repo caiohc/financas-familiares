@@ -1,44 +1,70 @@
-class FamilyAlreadyExistsError(ValueError):
-    """Violação da regra de unicidade: já existe uma família com este nome."""
+"""
+Mensagens das exceções do domínio de Família.
 
-    def __init__(self, name: str):
-        super().__init__(f"Já existe uma família com o nome \"{name}\".")
-        self.name = name
-
-
-class FamilyNotFoundError(ValueError):
-    """A família referenciada não existe."""
-
-    def __init__(self, family_id):
-        super().__init__(f"Família com ID {family_id} não encontrada.")
-        self.family_id = family_id
+Não são classes novas: cada função devolve uma das exceções compartilhadas de
+domain/shared/exceptions.py com a mensagem do caso. Assim o texto fica num
+lugar só, mesmo quando serviço e repositório levantam a mesma exceção.
+"""
+from domain.shared.exceptions import (
+    EntityAlreadyExistsError,
+    EntityHasDependenciesError,
+    EntityNotFoundError,
+)
 
 
-class FamilyHasDependenciesError(ValueError):
-    """A família não pode ser excluída pois há entidades vinculadas a ela."""
-
-    def __init__(self, family_id):
-        super().__init__(
-            "Não é possível excluir a família pois existem dependências "
-            "(membros, contas) vinculadas a ela."
-        )
-        self.family_id = family_id
+def family_already_exists(name: str) -> EntityAlreadyExistsError:
+    return EntityAlreadyExistsError(
+        "Family", "name", name, f"Já existe uma família com o nome \"{name}\"."
+    )
 
 
-class FamilyCostCenterAlreadyExistsError(ValueError):
-    """Violação da unicidade por família: já existe um centro de custo com este nome nesta família."""
-
-    def __init__(self, family_id, name: str):
-        super().__init__(
-            f"Já existe um centro de custo com o nome \"{name}\" nesta família."
-        )
-        self.family_id = family_id
-        self.name = name
+def family_not_found(family_id) -> EntityNotFoundError:
+    return EntityNotFoundError("Family", family_id, f"Família com ID {family_id} não encontrada.")
 
 
-class FamilyCostCenterNotFoundError(ValueError):
-    """O centro de custo referenciado não existe."""
+def family_has_dependencies(family_id) -> EntityHasDependenciesError:
+    return EntityHasDependenciesError(
+        "Family",
+        family_id,
+        "Não é possível excluir a família pois existem dependências vinculadas a ela "
+        "(membros, centros de custo, contas ou transações).",
+    )
 
-    def __init__(self, cost_center_id):
-        super().__init__(f"Centro de custo com ID {cost_center_id} não encontrado.")
-        self.cost_center_id = cost_center_id
+
+def member_already_exists(name: str) -> EntityAlreadyExistsError:
+    return EntityAlreadyExistsError(
+        "Member", "name", name, f"Já existe um membro com o nome \"{name}\" nesta família."
+    )
+
+
+def member_not_found(member_id) -> EntityNotFoundError:
+    return EntityNotFoundError("Member", member_id, f"Membro com ID {member_id} não encontrado.")
+
+
+def member_has_dependencies(member_id) -> EntityHasDependenciesError:
+    return EntityHasDependenciesError(
+        "Member",
+        member_id,
+        "Não é possível excluir o membro pois existem dependências vinculadas a ele (contas ou cartões).",
+    )
+
+
+def cost_center_already_exists(name: str) -> EntityAlreadyExistsError:
+    return EntityAlreadyExistsError(
+        "FamilyCostCenter", "name", name,
+        f"Já existe um centro de custo com o nome \"{name}\" nesta família.",
+    )
+
+
+def cost_center_not_found(cost_center_id) -> EntityNotFoundError:
+    return EntityNotFoundError(
+        "FamilyCostCenter", cost_center_id, f"Centro de custo com ID {cost_center_id} não encontrado."
+    )
+
+
+def cost_center_has_dependencies(cost_center_id) -> EntityHasDependenciesError:
+    return EntityHasDependenciesError(
+        "FamilyCostCenter",
+        cost_center_id,
+        "Não é possível excluir o centro de custo pois existem dependências vinculadas a ele (transações).",
+    )

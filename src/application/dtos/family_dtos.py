@@ -23,6 +23,16 @@ class CreateMemberDTO:
     name: str
 
 @dataclass(kw_only=True)
+class UpdateMemberDTO:
+    name: str
+
+@dataclass(kw_only=True)
+class MemberResponseDTO:
+    id: UUID
+    family_id: UUID
+    name: str
+
+@dataclass(kw_only=True)
 class CreateFamilyCostCenterDTO:
     family_id: UUID
     name: str

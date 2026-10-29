@@ -42,8 +42,8 @@ def test_family_cost_center_wiring_through_the_real_stack(client):
     family_id = re.search(r"/family/edit/([0-9a-f-]{36})", create_family_response.get_data(as_text=True)).group(1)
 
     create_response = client.post(
-        f"/family/{family_id}/cost-center/create",
-        data={"name": "Casa de Praia", "description": "Litoral"},
+        "/cost-center/create",
+        data={"family_id": family_id, "name": "Casa de Praia", "description": "Litoral"},
         follow_redirects=True,
     )
     assert create_response.status_code == 200
@@ -51,6 +51,6 @@ def test_family_cost_center_wiring_through_the_real_stack(client):
     assert "Casa de Praia" in html
     assert "criado com sucesso" in html
 
-    list_response = client.get(f"/family/{family_id}/cost-center/list")
+    list_response = client.get("/cost-center/list")
     assert list_response.status_code == 200
     assert "Casa de Praia" in list_response.get_data(as_text=True)

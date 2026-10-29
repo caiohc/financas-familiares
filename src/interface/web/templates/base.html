@@ -5,190 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Painel Administrativo{% endblock %} - Finanças V1</title>
-    <!-- CSS Nativo Injetado: Elegância em Tema Escuro (Rich Dark Mode UI) -->
-    <style>
-        :root {
-            /* Cores de Fundo Absolutas e Vidros (Glassmorphism) */
-            --bg-color: #0d1117;
-            --panel-bg: #161b22;
-            --glass-border: rgba(255, 255, 255, 0.08);
-
-            /* Textos e Destaques */
-            --text-primary: #e6edf3;
-            --text-secondary: #8b949e;
-            --accent-glow: #2f81f7;
-            --success-color: #238636;
-            --danger-color: #da3633;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
-        }
-
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-primary);
-            line-height: 1.5;
-            display: flex;
-            min-height: 100vh;
-        }
-
-        /* Menu Lateral (Sidebar) */
-        .sidebar {
-            width: 280px;
-            background-color: var(--panel-bg);
-            border-right: 1px solid var(--glass-border);
-            padding: 2rem 1.5rem;
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-            transition: width 0.3s ease, padding 0.3s ease;
-            flex-shrink: 0;
-        }
-
-        body.sidebar-is-collapsed .sidebar {
-            width: 84px;
-            padding: 2rem 0.8rem;
-        }
-
-        .sidebar-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--glass-border);
-        }
-
-        .sidebar-brand {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            letter-spacing: 1px;
-            white-space: nowrap;
-            overflow: hidden;
-            transition: opacity 0.2s;
-        }
-
-        body.sidebar-is-collapsed .sidebar-brand {
-            display: none;
-        }
-
-        body.sidebar-is-collapsed .sidebar-header {
-            justify-content: center;
-        }
-
-        .toggle-btn {
-            background: none;
-            border: none;
-            color: var(--text-secondary);
-            cursor: pointer;
-            padding: 0.4rem;
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: 0.2s;
-        }
-
-        .toggle-btn:hover {
-            background-color: rgba(255,255,255,0.1);
-            color: var(--text-primary);
-        }
-
-        .nav-links {
-            list-style: none;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-
-        .nav-links a {
-            text-decoration: none;
-            color: var(--text-secondary);
-            font-weight: 500;
-            padding: 0.75rem 1rem;
-            border-radius: 6px;
-            transition: all 0.2s ease-in-out;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            white-space: nowrap;
-            overflow: hidden;
-        }
-
-        body.sidebar-is-collapsed .nav-links a {
-            justify-content: center;
-            padding: 0.75rem 0;
-        }
-
-        body.sidebar-is-collapsed .nav-links a span {
-            display: none;
-        }
-
-        .nav-links a:hover,
-        .nav-links a.active {
-            background-color: rgba(47, 129, 247, 0.1);
-            color: var(--accent-glow);
-        }
-
-        /* Estrutura Principal */
-        .main-content {
-            flex-grow: 1;
-            padding: 3rem 4rem;
-            overflow-y: auto;
-        }
-
-        .page-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2.5rem;
-        }
-
-        .page-header h1 {
-            font-size: 2rem;
-            font-weight: 600;
-        }
-
-        /* Botões Globais */
-        .btn {
-            background-color: var(--accent-glow);
-            color: white;
-            border: none;
-            padding: 0.6rem 1.2rem;
-            font-size: 0.9rem;
-            font-weight: 600;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: 0.2s;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .btn:hover {
-            box-shadow: 0 0 15px rgba(47, 129, 247, 0.4);
-            filter: brightness(1.1);
-        }
-
-        .btn-success {
-            background-color: var(--success-color);
-        }
-
-        /* Containers e Cards como vidro opaco */
-        .card {
-            background-color: var(--panel-bg);
-            border: 1px solid var(--glass-border);
-            border-radius: 12px;
-            padding: 2rem;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 </head>
 
 <body>
@@ -213,7 +30,7 @@
         </div>
         <ul class="nav-links">
             <li>
-                <a href="/">
+                <a href="{{ url_for('dashboard.index') }}"{% if request.blueprint == 'dashboard' %} class="active"{% endif %}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         stroke-linecap="round" stroke-linejoin="round">
                         <rect x="3" y="3" width="7" height="9"></rect>
@@ -221,11 +38,11 @@
                         <rect x="14" y="12" width="7" height="9"></rect>
                         <rect x="3" y="16" width="7" height="5"></rect>
                     </svg>
-                    <span>Dashboard Geral</span>
+                    <span>Dashboard</span>
                 </a>
             </li>
             <li>
-                <a href="{{ url_for('family.list_families') }}">
+                <a href="{{ url_for('family.list_families') }}"{% if request.blueprint == 'family' %} class="active"{% endif %}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         stroke-linecap="round" stroke-linejoin="round">
                         <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -237,17 +54,26 @@
                 </a>
             </li>
             <li>
-                <a href="#">
+                <a href="{{ url_for('family_cost_center.list_cost_centers') }}"{% if request.blueprint == 'family_cost_center' %} class="active"{% endif %}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <span>Centros de custo</span>
+                </a>
+            </li>
+            <li>
+                <a href="{{ url_for('member.list_members') }}"{% if request.blueprint == 'member' %} class="active"{% endif %}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         stroke-linecap="round" stroke-linejoin="round">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                         <circle cx="12" cy="7" r="4"></circle>
                     </svg>
-                    <span>Membros das famílias</span>
+                    <span>Membros</span>
                 </a>
             </li>
             <li>
-                <a href="#">
+                <a href="{{ url_for('category.list_categories') }}"{% if request.blueprint == 'category' %} class="active"{% endif %}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         stroke-linecap="round" stroke-linejoin="round">
                         <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path>
@@ -257,7 +83,7 @@
                 </a>
             </li>
             <li>
-                <a href="#">
+                <span class="nav-soon" title="Em breve">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         stroke-linecap="round" stroke-linejoin="round">
                         <polygon points="12 2 2 7 22 7 12 2"></polygon>
@@ -268,21 +94,21 @@
                         <line x1="14" y1="17" x2="14" y2="7"></line>
                         <line x1="18" y1="17" x2="18" y2="7"></line>
                     </svg>
-                    <span>Contas Bancárias</span>
-                </a>
+                    <span>Contas bancárias</span><span class="soon-tag">em breve</span>
+                </span>
             </li>
             <li>
-                <a href="#">
+                <span class="nav-soon" title="Em breve">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         stroke-linecap="round" stroke-linejoin="round">
                         <rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect>
                         <line x1="1" y1="10" x2="23" y2="10"></line>
                     </svg>
-                    <span>Cartões de Crédito</span>
-                </a>
+                    <span>Cartões de crédito</span><span class="soon-tag">em breve</span>
+                </span>
             </li>
             <li>
-                <a href="#">
+                <span class="nav-soon" title="Em breve">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                         stroke-linecap="round" stroke-linejoin="round">
                         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -291,8 +117,8 @@
                         <line x1="16" y1="17" x2="8" y2="17"></line>
                         <polyline points="10 9 9 9 8 9"></polyline>
                     </svg>
-                    <span>Auditoria de Transações</span>
-                </a>
+                    <span>Auditoria de transações</span><span class="soon-tag">em breve</span>
+                </span>
             </li>
         </ul>
     </aside>
@@ -302,8 +128,7 @@
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
-                {% set tone = {'success': ('rgba(63, 185, 80, 0.1)', 'var(--success-color, #3fb950)'), 'error': ('rgba(218, 54, 51, 0.1)', 'var(--danger-color)')}.get(category, ('rgba(47, 129, 247, 0.1)', 'var(--accent-glow)')) %}
-                <div style="background-color: {{ tone[0] }}; border: 1px solid {{ tone[1] }}; color: {{ tone[1] }}; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; text-align: center; font-weight: 500;">
+                <div class="alert alert-{{ {'success': 'success', 'error': 'error'}.get(category, 'info') }}">
                     {{ message }}
                 </div>
                 {% endfor %}

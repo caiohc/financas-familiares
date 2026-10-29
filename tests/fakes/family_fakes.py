@@ -1,8 +1,9 @@
 import uuid
 from typing import Optional
-from domain.family.repositories import FamilyRepository, FamilyCostCenterRepository
-from domain.family.entities import Family, FamilyCostCenter
+from domain.family.repositories import FamilyRepository, FamilyCostCenterRepository, MemberRepository
+from domain.family.entities import Family, FamilyCostCenter, Member
 from application.interfaces.unit_of_work import AbstractUnitOfWork
+from fakes.financial_fakes import FakeCategoryRepository
 
 
 class FakeFamilyRepository(FamilyRepository):
@@ -35,7 +36,46 @@ class FakeFamilyRepository(FamilyRepository):
 
     def has_dependencies(self, family_id: uuid.UUID) -> bool:
         return self._has_deps
-        
+
+    def set_has_dependencies(self, value: bool):
+        """Método auxiliar exclusivo para testes manipularem o estado do Fake."""
+        self._has_deps = value
+
+
+class FakeMemberRepository(MemberRepository):
+    """
+    Fake Repository centralizado para testes.
+    Armazena os dados em memória RAM usando um dicionário.
+    """
+    def __init__(self):
+        self.members = {}
+        self._has_deps = False
+
+    def save(self, member: Member) -> None:
+        self.members[member.id] = member
+
+    def get_by_id(self, member_id: uuid.UUID) -> Optional[Member]:
+        return self.members.get(member_id)
+
+    def get_by_name(self, family_id: uuid.UUID, name: str) -> Optional[Member]:
+        for member in self.members.values():
+            if member.family_id == family_id and member.name.lower() == name.lower():
+                return member
+        return None
+
+    def list_by_family(self, family_id: uuid.UUID) -> list[Member]:
+        return [m for m in self.members.values() if m.family_id == family_id]
+
+    def list_all(self) -> list[Member]:
+        return list(self.members.values())
+
+    def delete(self, member_id: uuid.UUID) -> None:
+        if member_id in self.members:
+            del self.members[member_id]
+
+    def has_dependencies(self, member_id: uuid.UUID) -> bool:
+        return self._has_deps
+
     def set_has_dependencies(self, value: bool):
         """Método auxiliar exclusivo para testes manipularem o estado do Fake."""
         self._has_deps = value
@@ -48,6 +88,7 @@ class FakeFamilyCostCenterRepository(FamilyCostCenterRepository):
     """
     def __init__(self):
         self.cost_centers = {}
+        self._has_deps = False
 
     def save(self, cost_center: FamilyCostCenter) -> None:
         self.cost_centers[cost_center.id] = cost_center
@@ -64,9 +105,19 @@ class FakeFamilyCostCenterRepository(FamilyCostCenterRepository):
     def list_by_family(self, family_id: uuid.UUID) -> list[FamilyCostCenter]:
         return [cc for cc in self.cost_centers.values() if cc.family_id == family_id]
 
+    def list_all(self) -> list[FamilyCostCenter]:
+        return list(self.cost_centers.values())
+
     def delete(self, cost_center_id: uuid.UUID) -> None:
         if cost_center_id in self.cost_centers:
             del self.cost_centers[cost_center_id]
+
+    def has_dependencies(self, cost_center_id: uuid.UUID) -> bool:
+        return self._has_deps
+
+    def set_has_dependencies(self, value: bool):
+        """Método auxiliar exclusivo para testes manipularem o estado do Fake."""
+        self._has_deps = value
 
 
 class FakeUnitOfWork(AbstractUnitOfWork):
@@ -76,7 +127,9 @@ class FakeUnitOfWork(AbstractUnitOfWork):
     """
     def __init__(self):
         self.families = FakeFamilyRepository()
+        self.members = FakeMemberRepository()
         self.family_cost_centers = FakeFamilyCostCenterRepository()
+        self.categories = FakeCategoryRepository()
         self.committed = False
 
     def __enter__(self):

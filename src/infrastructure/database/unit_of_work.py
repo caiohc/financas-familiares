@@ -3,6 +3,8 @@ from infrastructure.repositories.sqlalchemy.sqlalchemy_family_repository import 
 from infrastructure.repositories.sqlalchemy.sqlalchemy_family_cost_center_repository import (
     SQLAlchemyFamilyCostCenterRepository,
 )
+from infrastructure.repositories.sqlalchemy.sqlalchemy_member_repository import SQLAlchemyMemberRepository
+from infrastructure.repositories.sqlalchemy.sqlalchemy_category_repository import SQLAlchemyCategoryRepository
 
 class SQLAlchemyUnitOfWork(AbstractUnitOfWork):
     """
@@ -18,6 +20,8 @@ class SQLAlchemyUnitOfWork(AbstractUnitOfWork):
         
         # Instancia e expõe os repositórios atrelados a esta sessão
         self.families = SQLAlchemyFamilyRepository(self.session)
+        self.members = SQLAlchemyMemberRepository(self.session)
+        self.categories = SQLAlchemyCategoryRepository(self.session)
         self.family_cost_centers = SQLAlchemyFamilyCostCenterRepository(self.session)
 
         return super().__enter__()
