@@ -1,4 +1,5 @@
 import uuid
+from fakes.pagination import page_of
 from decimal import Decimal
 from html import unescape
 
@@ -23,7 +24,7 @@ def test_list_members_shows_entries_across_families(client, member_service, fami
     family_a = _family("Família A")
     family_b = _family("Família B")
     family_service.list_families.return_value = [family_a, family_b]
-    member_service.list_all_members.return_value = [_member("João", family_a.id), _member("Pedro", family_b.id)]
+    member_service.list_all_members_page.return_value = page_of([_member("João", family_a.id), _member("Pedro", family_b.id)])
 
     response = client.get("/member/list")
 
@@ -33,7 +34,7 @@ def test_list_members_shows_entries_across_families(client, member_service, fami
         assert text in html
 
 def test_list_members_offers_create_button(client, member_service):
-    member_service.list_all_members.return_value = []
+    member_service.list_all_members_page.return_value = page_of([])
 
     assert 'href="/member/new"' in client.get("/member/list").get_data(as_text=True)
 
@@ -41,7 +42,7 @@ def test_list_members_rows_are_wired_to_edit_and_delete(client, member_service, 
     family = _family("Família A")
     member = _member("João", family.id)
     family_service.list_families.return_value = [family]
-    member_service.list_all_members.return_value = [member]
+    member_service.list_all_members_page.return_value = page_of([member])
 
     html = client.get("/member/list").get_data(as_text=True)
 
@@ -76,7 +77,7 @@ def test_create_member_calls_service_and_redirects_to_list(client, member_servic
     member_service.create_member.assert_called_once_with(CreateMemberDTO(family_id=family_id, name="João"))
 
 def test_create_member_flashes_success_message(client, member_service):
-    member_service.list_all_members.return_value = []
+    member_service.list_all_members_page.return_value = page_of([])
 
     response = client.post(
         "/member/create", data={"family_id": str(uuid.uuid4()), "name": "João"}, follow_redirects=True
@@ -153,7 +154,7 @@ def test_update_member_calls_service_and_redirects_to_list(client, member_servic
     member_service.update_member.assert_called_once_with(member_id, UpdateMemberDTO(name="Maria"))
 
 def test_update_member_flashes_success_message(client, member_service):
-    member_service.list_all_members.return_value = []
+    member_service.list_all_members_page.return_value = page_of([])
 
     response = client.post(f"/member/update/{uuid.uuid4()}", data={"name": "Maria"}, follow_redirects=True)
 
@@ -205,7 +206,7 @@ def test_delete_member_calls_service_and_redirects_to_list(client, member_servic
     member_service.delete_member.assert_called_once_with(member_id)
 
 def test_delete_member_flashes_success_message(client, member_service):
-    member_service.list_all_members.return_value = []
+    member_service.list_all_members_page.return_value = page_of([])
 
     response = client.post(f"/member/delete/{uuid.uuid4()}", follow_redirects=True)
 
@@ -215,7 +216,7 @@ def test_delete_member_flashes_success_message(client, member_service):
 def test_delete_member_with_dependencies_flashes_error_and_redirects(client, member_service):
     member_id = uuid.uuid4()
     member_service.delete_member.side_effect = member_has_dependencies(member_id)
-    member_service.list_all_members.return_value = []
+    member_service.list_all_members_page.return_value = page_of([])
 
     response = client.post(f"/member/delete/{member_id}", follow_redirects=True)
 
@@ -263,3 +264,22 @@ def test_confirm_delete_nonexistent_member_returns_404(client, member_service):
     member_service.preview_member_deletion.side_effect = member_not_found(member_id)
 
     assert client.get(f"/member/confirm-delete/{member_id}").status_code == 404
+
+def test_list_members_tells_same_named_families_apart_by_uuid_suffix(client, member_service, family_service):
+    family_a = _family("Família Silva")
+    family_b = _family("Família Silva")
+    family_service.list_families.return_value = [family_a, family_b]
+    member_service.list_all_members_page.return_value = page_of([_member("João", family_a.id), _member("Pedro", family_b.id)])
+
+    html = unescape(client.get("/member/list").get_data(as_text=True))
+
+    assert f"Família Silva · {str(family_a.id)[:8]}" in html
+    assert f"Família Silva · {str(family_b.id)[:8]}" in html
+
+def test_new_member_form_family_select_shows_uuid_suffix(client, family_service):
+    family = _family("Família Silva")
+    family_service.list_families.return_value = [family]
+
+    html = unescape(client.get("/member/new").get_data(as_text=True))
+
+    assert f"Família Silva · {str(family.id)[:8]}" in html

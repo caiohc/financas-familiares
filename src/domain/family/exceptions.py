@@ -12,12 +12,6 @@ from domain.shared.exceptions import (
 )
 
 
-def family_already_exists(name: str) -> EntityAlreadyExistsError:
-    return EntityAlreadyExistsError(
-        "Family", "name", name, f"Já existe uma família com o nome \"{name}\"."
-    )
-
-
 def family_not_found(family_id) -> EntityNotFoundError:
     return EntityNotFoundError("Family", family_id, f"Família com ID {family_id} não encontrada.")
 

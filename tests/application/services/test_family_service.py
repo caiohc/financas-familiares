@@ -31,17 +31,21 @@ def test_create_family(service: FamilyService, uow: FakeUnitOfWork):
     assert saved.name == "Família Silva"
     assert uow.committed is True
 
-def test_create_family_with_duplicate_name_raises(service: FamilyService, uow: FakeUnitOfWork):
+def test_create_family_allows_same_name_as_another_family(service: FamilyService, uow: FakeUnitOfWork):
+    first = service.create_family(CreateFamilyDTO(name="Família Silva"))
+    second = service.create_family(CreateFamilyDTO(name="família silva"))
+
+    assert first.id != second.id
+    assert len(uow.families.list_all()) == 2
+
+def test_update_family_allows_name_of_another_family(service: FamilyService, uow: FakeUnitOfWork):
     uow.families.save(Family(name="Família Silva"))
+    other = Family(name="Família Souza")
+    uow.families.save(other)
 
-    with pytest.raises(EntityAlreadyExistsError):
-        service.create_family(CreateFamilyDTO(name="Família Silva"))
+    response = service.update_family(other.id, UpdateFamilyDTO(name="Família Silva"))
 
-def test_create_family_with_duplicate_name_ignoring_case_raises(service: FamilyService, uow: FakeUnitOfWork):
-    uow.families.save(Family(name="Família Silva"))
-
-    with pytest.raises(EntityAlreadyExistsError):
-        service.create_family(CreateFamilyDTO(name="família silva"))
+    assert response.name == "Família Silva"
 
 def test_get_family(service: FamilyService, uow: FakeUnitOfWork):
     family = Family(name="Família Souza")
@@ -79,22 +83,6 @@ def test_update_family_to_own_current_name_is_allowed(service: FamilyService, uo
 
     response = service.update_family(family.id, UpdateFamilyDTO(name="Família Silva"))
     assert response.name == "Família Silva"
-
-def test_update_family_to_another_familys_name_raises(service: FamilyService, uow: FakeUnitOfWork):
-    uow.families.save(Family(name="Família Silva"))
-    other = Family(name="Família Souza")
-    uow.families.save(other)
-
-    with pytest.raises(EntityAlreadyExistsError):
-        service.update_family(other.id, UpdateFamilyDTO(name="Família Silva"))
-
-def test_update_family_to_another_familys_name_ignoring_case_raises(service: FamilyService, uow: FakeUnitOfWork):
-    uow.families.save(Family(name="Família Silva"))
-    other = Family(name="Família Souza")
-    uow.families.save(other)
-
-    with pytest.raises(EntityAlreadyExistsError):
-        service.update_family(other.id, UpdateFamilyDTO(name="família silva"))
 
 def test_update_family_not_found(service: FamilyService):
     with pytest.raises(ValueError, match="não encontrada"):

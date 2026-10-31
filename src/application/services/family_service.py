@@ -1,11 +1,13 @@
 import uuid
-from typing import List
+from typing import List, Optional
 
 from application.dtos.family_dtos import CreateFamilyDTO, UpdateFamilyDTO, FamilyResponseDTO
 from application.dtos.shared_dtos import DeletionPreviewDTO
+from application.dtos.shared_dtos import DEFAULT_PAGE_SIZE, PageDTO
+from application.services.pagination import build_page
 from application.interfaces.unit_of_work import AbstractUnitOfWork
 from domain.family.entities import Family
-from domain.family.exceptions import family_already_exists, family_has_dependencies, family_not_found
+from domain.family.exceptions import family_has_dependencies, family_not_found
 
 class FamilyService:
     """
@@ -26,9 +28,6 @@ class FamilyService:
         with self.uow:
             family = Family(name=dto.name)
 
-            if self.uow.families.get_by_name(family.name):
-                raise family_already_exists(family.name)
-
             self.uow.families.save(family)
             self.uow.commit()
             return self._to_dto(family)
@@ -45,18 +44,23 @@ class FamilyService:
             families = sorted(self.uow.families.list_all(), key=lambda f: f.name.lower())
             return [self._to_dto(f) for f in families]
 
+    def list_families_page(
+        self, page: Optional[int] = 1, page_size: Optional[int] = DEFAULT_PAGE_SIZE,
+        sort_by: Optional[str] = None, sort_dir: Optional[str] = None,
+        search: Optional[str] = None,
+    ) -> PageDTO[FamilyResponseDTO]:
+        with self.uow:
+            return build_page(
+                self.uow.families.list_page, self._to_dto, page, page_size, sort_by, sort_dir, ("name",), search,
+            )
+
     def update_family(self, family_id: uuid.UUID, dto: UpdateFamilyDTO) -> FamilyResponseDTO:
         with self.uow:
             family = self.uow.families.get_by_id(family_id)
             if not family:
                 raise family_not_found(family_id)
 
-            new_name = Family.normalize_name(dto.name)
-            existing = self.uow.families.get_by_name(new_name)
-            if existing and existing.id != family_id:
-                raise family_already_exists(new_name)
-
-            family.rename(new_name)
+            family.rename(dto.name)
             self.uow.families.save(family)
             self.uow.commit()
             return self._to_dto(family)

@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
+{% import "_pagination.html" as pager %}
 
 {% block title %}Famílias{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <h1>Famílias</h1>
-    <a href="{{ url_for('family.new') }}" class="btn btn-success">+ Nova família</a>
 </div>
 
 <div class="alert alert-info">
@@ -17,18 +17,22 @@
 <div class="alert alert-error">{{ error }}</div>
 {% endif %}
 
+{% call pager.search_bar(pagination, 'family.list_families', 'nome') %}
+<a href="{{ url_for('family.new') }}" class="btn btn-success">+ Nova família</a>
+{% endcall %}
+
 <div class="card card-flush">
     <table class="data-table">
         <thead>
             <tr>
-                <th>Nome</th>
+                {{ pager.sortable_th(pagination, 'family.list_families', 'name', 'Nome') }}
                 <th class="col-actions">Ações</th>
             </tr>
         </thead>
         <tbody>
             {% for f in families %}
             <tr>
-                <td class="cell-strong">{{ f.name }}</td>
+                <td class="cell-strong">{{ f.name|highlight(pagination.search) }} · {{ f.id|string|truncate(8, True, '') }}</td>
                 <td>
                     <div class="row-actions">
                         <a href="{{ url_for('family.edit', family_id=f.id) }}" class="btn btn-sm">{{ icons.edit() }} Editar</a>
@@ -38,10 +42,11 @@
             </tr>
             {% else %}
             <tr>
-                <td colspan="2" class="empty-state">Nenhuma família cadastrada ainda.</td>
+                <td colspan="2" class="empty-state">{% if pagination.search %}Nenhum resultado para "{{ pagination.search }}".{% else %}Nenhuma família cadastrada ainda.{% endif %}</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+    {{ pager.controls(pagination, 'family.list_families') }}
 </div>
 {% endblock %}

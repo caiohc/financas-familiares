@@ -19,13 +19,13 @@
             {% if member %}
             {# A família de um membro existente não muda: só leitura. #}
             {% for f in families if f.id == member.family_id %}
-            <div class="form-control form-control-static">{{ f.name }}</div>
+            <div class="form-control form-control-static">{{ f|family_label }}</div>
             {% endfor %}
             {% else %}
             <select id="family_id" name="family_id" required class="form-control">
                 <option value="" disabled {% if not selected_family_id %}selected{% endif %}>Selecione a família</option>
                 {% for f in families %}
-                <option value="{{ f.id }}" {% if f.id == selected_family_id %}selected{% endif %}>{{ f.name }}</option>
+                <option value="{{ f.id }}" {% if f.id == selected_family_id %}selected{% endif %}>{{ f|family_label }}</option>
                 {% endfor %}
             </select>
             {% endif %}

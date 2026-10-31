@@ -3,6 +3,8 @@ from domain.family.entities import Family, Member, FamilyCostCenter
 from typing import Optional
 import uuid
 
+from domain.shared.pagination import Page
+
 class FamilyRepository(ABC):
     """Interface (Contrato) para operações de banco de dados com Famílias."""
     @abstractmethod
@@ -14,12 +16,19 @@ class FamilyRepository(ABC):
         pass
 
     @abstractmethod
-    def get_by_name(self, name: str) -> Optional[Family]:
-        """Busca case-insensitive: nome é único independente de maiúsculas/minúsculas."""
+    def list_all(self) -> list[Family]:
         pass
 
     @abstractmethod
-    def list_all(self) -> list[Family]:
+    def list_page(
+        self, page: int, page_size: int, sort_by: str = "name", descending: bool = False,
+        search: Optional[str] = None,
+    ) -> Page[Family]:
+        """Fatia (página 1-based) com o total geral, ordenada por um campo sem diferenciar maiúsculas; empates por nome e id.
+
+        `search` filtra por trecho do nome (e, em membros e centros de custo, do nome da família),
+        sem diferenciar caixa nem acentos; o total e a paginação valem sobre o resultado filtrado.
+        """
         pass
 
     @abstractmethod
@@ -52,6 +61,18 @@ class MemberRepository(ABC):
 
     @abstractmethod
     def list_all(self) -> list[Member]:
+        pass
+
+    @abstractmethod
+    def list_page(
+        self, page: int, page_size: int, sort_by: str = "name", descending: bool = False,
+        search: Optional[str] = None,
+    ) -> Page[Member]:
+        """Fatia (página 1-based) com o total geral, ordenada por um campo sem diferenciar maiúsculas; empates por nome e id.
+
+        `search` filtra por trecho do nome (e, em membros e centros de custo, do nome da família),
+        sem diferenciar caixa nem acentos; o total e a paginação valem sobre o resultado filtrado.
+        """
         pass
 
     @abstractmethod
@@ -89,6 +110,18 @@ class FamilyCostCenterRepository(ABC):
         Existe só porque a interface web ainda não tem autenticação/sessão de
         usuário para resolver "a família do usuário atual" (ver decisão do
         item de menu). Revisitar quando login existir.
+        """
+        pass
+
+    @abstractmethod
+    def list_page(
+        self, page: int, page_size: int, sort_by: str = "name", descending: bool = False,
+        search: Optional[str] = None,
+    ) -> Page[FamilyCostCenter]:
+        """Fatia (página 1-based) com o total geral, ordenada por um campo sem diferenciar maiúsculas; empates por nome e id.
+
+        `search` filtra por trecho do nome (e, em membros e centros de custo, do nome da família),
+        sem diferenciar caixa nem acentos; o total e a paginação valem sobre o resultado filtrado.
         """
         pass
 

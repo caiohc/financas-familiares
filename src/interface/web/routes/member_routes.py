@@ -11,6 +11,8 @@ from domain.shared.exceptions import (
     EntityNotFoundError,
 )
 
+from interface.web.labels import family_label_parts
+
 bp = Blueprint('member', __name__)
 
 def get_member_service() -> MemberService:
@@ -133,7 +135,14 @@ def list_members():
     Existe só porque não há autenticação/sessão de usuário ainda para
     resolver "a família do usuário atual". Revisitar quando login existir.
     """
-    members = get_member_service().list_all_members()
-    families_by_id = {f.id: f.name for f in get_family_service().list_families()}
-    members = sorted(members, key=lambda item: (families_by_id.get(item.family_id, "").lower(), item.name.lower()))
-    return render_template('member/index.html', members=members, families_by_id=families_by_id)
+    result = get_member_service().list_all_members_page(
+        page=request.args.get('page', type=int),
+        page_size=request.args.get('per_page', type=int),
+        sort_by=request.args.get('sort'),
+        sort_dir=request.args.get('dir'),
+        search=request.args.get('q'),
+    )
+    families_by_id = {f.id: family_label_parts(f) for f in get_family_service().list_families()}
+    return render_template(
+        'member/index.html', members=result.items, pagination=result, families_by_id=families_by_id
+    )

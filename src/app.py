@@ -48,6 +48,10 @@ def dashboard_service_factory():
     uow = SQLAlchemyUnitOfWork(SessionLocal)
     return DashboardService(uow=uow)
 
+from application.dtos.shared_dtos import ALLOWED_PAGE_SIZES
+from interface.web.labels import family_label, highlight, highlight_label
+
+
 def create_app(test_config=None):
     """Factory Pattern: Cria e configura uma instância da aplicação Flask."""
 
@@ -69,6 +73,11 @@ def create_app(test_config=None):
     # 2. Inicializa a Infraestrutura (Banco de Dados) de forma explícita
     init_db(app)
     
+    app.jinja_env.filters['family_label'] = family_label
+    app.jinja_env.filters['highlight'] = highlight
+    app.jinja_env.filters['highlight_label'] = highlight_label
+    app.jinja_env.globals['page_sizes'] = ALLOWED_PAGE_SIZES
+
     # Injeção de dependência via Factory.
     # Em produção, usa o banco real. Em testes, será sobrescrito.
     app.family_service_factory = family_service_factory

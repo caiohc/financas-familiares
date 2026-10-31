@@ -1,8 +1,10 @@
 import uuid
-from typing import List
+from typing import List, Optional
 
 from application.dtos.family_dtos import CreateMemberDTO, UpdateMemberDTO, MemberResponseDTO
 from application.dtos.shared_dtos import DeletionPreviewDTO
+from application.dtos.shared_dtos import DEFAULT_PAGE_SIZE, PageDTO
+from application.services.pagination import build_page
 from application.interfaces.unit_of_work import AbstractUnitOfWork
 from domain.family.entities import Member
 from domain.family.exceptions import member_already_exists, member_has_dependencies, member_not_found
@@ -48,6 +50,16 @@ class MemberService:
         """Provisório, sem escopo de família: sem login ainda não há "a família do usuário atual"."""
         with self.uow:
             return [self._to_dto(m) for m in self._by_name(self.uow.members.list_all())]
+
+    def list_all_members_page(
+        self, page: Optional[int] = 1, page_size: Optional[int] = DEFAULT_PAGE_SIZE,
+        sort_by: Optional[str] = None, sort_dir: Optional[str] = None,
+        search: Optional[str] = None,
+    ) -> PageDTO[MemberResponseDTO]:
+        with self.uow:
+            return build_page(
+                self.uow.members.list_page, self._to_dto, page, page_size, sort_by, sort_dir, ("name", "family"), search,
+            )
 
     def update_member(self, member_id: uuid.UUID, dto: UpdateMemberDTO) -> MemberResponseDTO:
         with self.uow:

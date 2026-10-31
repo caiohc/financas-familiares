@@ -3,7 +3,6 @@ from application.dtos.family_dtos import CreateFamilyDTO, UpdateFamilyDTO
 from application.services.family_service import FamilyService
 from domain.shared.exceptions import (
     DomainValidationError,
-    EntityAlreadyExistsError,
     EntityHasDependenciesError,
     EntityNotFoundError,
 )
@@ -30,8 +29,6 @@ def create():
     service = get_family_service()
     try:
         service.create_family(dto)
-    except EntityAlreadyExistsError as error:
-        return _render_form(form_action=url_for('family.create'), name=name, error=str(error), status=409)
     except DomainValidationError as error:
         return _render_form(form_action=url_for('family.create'), name=name, error=str(error), status=400)
 
@@ -58,11 +55,6 @@ def update(family_id):
     service = get_family_service()
     try:
         service.update_family(family_id, dto)
-    except EntityAlreadyExistsError as error:
-        return _render_form(
-            form_action=url_for('family.update', family_id=family_id),
-            name=name, error=str(error), status=409,
-        )
     except DomainValidationError as error:
         return _render_form(
             form_action=url_for('family.update', family_id=family_id),
@@ -110,5 +102,11 @@ def delete(family_id):
 @bp.route('/list', methods=['GET'])
 def list_families():
     service = get_family_service()
-    families = service.list_families()
-    return render_template('family/index.html', families=families)
+    result = service.list_families_page(
+        page=request.args.get('page', type=int),
+        page_size=request.args.get('per_page', type=int),
+        sort_by=request.args.get('sort'),
+        sort_dir=request.args.get('dir'),
+        search=request.args.get('q'),
+    )
+    return render_template('family/index.html', families=result.items, pagination=result)

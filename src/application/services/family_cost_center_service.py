@@ -1,5 +1,5 @@
 import uuid
-from typing import List
+from typing import List, Optional
 
 from application.dtos.family_dtos import (
     CreateFamilyCostCenterDTO,
@@ -7,6 +7,8 @@ from application.dtos.family_dtos import (
     FamilyCostCenterResponseDTO,
 )
 from application.dtos.shared_dtos import DeletionPreviewDTO
+from application.dtos.shared_dtos import DEFAULT_PAGE_SIZE, PageDTO
+from application.services.pagination import build_page
 from application.interfaces.unit_of_work import AbstractUnitOfWork
 from domain.family.entities import FamilyCostCenter
 from domain.family.exceptions import (
@@ -76,6 +78,16 @@ class FamilyCostCenterService:
             blocked = self.uow.family_cost_centers.has_dependencies(cost_center_id)
             reason = str(cost_center_has_dependencies(cost_center_id)) if blocked else None
             return DeletionPreviewDTO(name=cost_center.name, blocked_reason=reason)
+
+    def list_all_family_cost_centers_page(
+        self, page: Optional[int] = 1, page_size: Optional[int] = DEFAULT_PAGE_SIZE,
+        sort_by: Optional[str] = None, sort_dir: Optional[str] = None,
+        search: Optional[str] = None,
+    ) -> PageDTO[FamilyCostCenterResponseDTO]:
+        with self.uow:
+            return build_page(
+                self.uow.family_cost_centers.list_page, self._to_dto, page, page_size, sort_by, sort_dir, ("name", "family"), search,
+            )
 
     def update_family_cost_center(
         self, cost_center_id: uuid.UUID, dto: UpdateFamilyCostCenterDTO

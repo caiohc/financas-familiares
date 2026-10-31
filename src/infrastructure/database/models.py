@@ -15,6 +15,9 @@ bill_transfer_settlements = Table(
     Column("transfer_id", String(36), ForeignKey("transfers.id", ondelete="CASCADE"), primary_key=True)
 )
 
+import infrastructure.database.sqlite_functions  # noqa: F401  (registra fold() no SQLite)
+
+
 class FamilyModel(Base):
     __tablename__ = "families"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
@@ -22,8 +25,9 @@ class FamilyModel(Base):
     current_balance: Mapped[Decimal] = mapped_column(Numeric(15, 2), default=Decimal('0.00'), nullable=False)
 
     __table_args__ = (
-        # Unicidade case-insensitive: índice sobre lower(name), não sobre a coluna direta.
-        Index("ix_families_name_lower", func.lower(name), unique=True),
+        # Nome não é único (várias famílias podem se chamar "Silva"); o índice
+        # sobre lower(name) existe só para acelerar busca e ordenação.
+        Index("ix_families_name_lower", func.lower(name)),
     )
 
 class MemberModel(Base):

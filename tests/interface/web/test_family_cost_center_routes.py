@@ -1,4 +1,5 @@
 import uuid
+from fakes.pagination import page_of
 from decimal import Decimal
 from html import unescape
 
@@ -24,10 +25,10 @@ def test_list_cost_centers_shows_entries_across_families(client, family_cost_cen
     family_a = _family("Família A")
     family_b = _family("Família B")
     family_service.list_families.return_value = [family_a, family_b]
-    family_cost_center_service.list_all_family_cost_centers.return_value = [
+    family_cost_center_service.list_all_family_cost_centers_page.return_value = page_of([
         _cost_center("Casa de Praia", family_a.id),
         _cost_center("Outro", family_b.id),
-    ]
+    ])
 
     response = client.get("/cost-center/list")
 
@@ -39,7 +40,7 @@ def test_list_cost_centers_shows_entries_across_families(client, family_cost_cen
     assert "Família B" in html
 
 def test_list_cost_centers_offers_create_button(client, family_cost_center_service):
-    family_cost_center_service.list_all_family_cost_centers.return_value = []
+    family_cost_center_service.list_all_family_cost_centers_page.return_value = page_of([])
 
     html = client.get("/cost-center/list").get_data(as_text=True)
 
@@ -49,7 +50,7 @@ def test_list_cost_centers_rows_are_wired_to_edit_and_delete(client, family_cost
     family = _family("Família A")
     cost_center = _cost_center("Casa de Praia", family.id)
     family_service.list_families.return_value = [family]
-    family_cost_center_service.list_all_family_cost_centers.return_value = [cost_center]
+    family_cost_center_service.list_all_family_cost_centers_page.return_value = page_of([cost_center])
 
     html = client.get("/cost-center/list").get_data(as_text=True)
 
@@ -89,7 +90,7 @@ def test_create_cost_center_calls_service_and_redirects_to_list(client, family_c
     )
 
 def test_create_cost_center_flashes_success_message(client, family_cost_center_service):
-    family_cost_center_service.list_all_family_cost_centers.return_value = []
+    family_cost_center_service.list_all_family_cost_centers_page.return_value = page_of([])
 
     response = client.post(
         "/cost-center/create",
@@ -169,7 +170,7 @@ def test_update_cost_center_calls_service_and_redirects_to_list(client, family_c
     )
 
 def test_update_cost_center_flashes_success_message(client, family_cost_center_service):
-    family_cost_center_service.list_all_family_cost_centers.return_value = []
+    family_cost_center_service.list_all_family_cost_centers_page.return_value = page_of([])
 
     response = client.post(
         f"/cost-center/update/{uuid.uuid4()}", data={"name": "Nome Novo"}, follow_redirects=True
@@ -216,7 +217,7 @@ def test_delete_cost_center_calls_service_and_redirects_to_list(client, family_c
     family_cost_center_service.delete_family_cost_center.assert_called_once_with(cost_center_id)
 
 def test_delete_cost_center_flashes_success_message(client, family_cost_center_service):
-    family_cost_center_service.list_all_family_cost_centers.return_value = []
+    family_cost_center_service.list_all_family_cost_centers_page.return_value = page_of([])
 
     response = client.post(f"/cost-center/delete/{uuid.uuid4()}", follow_redirects=True)
 
@@ -276,7 +277,7 @@ def test_delete_cost_center_with_dependencies_flashes_error_and_redirects(client
 
     cost_center_id = uuid.uuid4()
     family_cost_center_service.delete_family_cost_center.side_effect = cost_center_has_dependencies(cost_center_id)
-    family_cost_center_service.list_all_family_cost_centers.return_value = []
+    family_cost_center_service.list_all_family_cost_centers_page.return_value = page_of([])
 
     response = client.post(f"/cost-center/delete/{cost_center_id}", follow_redirects=True)
 

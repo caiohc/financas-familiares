@@ -141,3 +141,147 @@ def test_cost_center_used_by_a_transaction_has_dependencies(session: Session):
     session.flush()
 
     assert repo.has_dependencies(cost_center.id) is True
+
+# --- Paginação ---
+
+def test_cost_center_list_page_slices_across_families_and_reports_the_total(session: Session):
+    family_a = _create_family(session, "Família A")
+    family_b = _create_family(session, "Família B")
+    repo = SQLAlchemyFamilyCostCenterRepository(session)
+    for index in range(1, 6):
+        owner = family_a if index % 2 else family_b
+        repo.save(FamilyCostCenter(family_id=owner.id, name=f"Centro {index}"))
+    session.flush()
+
+    first = repo.list_page(page=1, page_size=2)
+    last = repo.list_page(page=3, page_size=2)
+
+    assert first.total == 5
+    assert [c.name for c in first.items] == ["Centro 1", "Centro 2"]
+    assert [c.name for c in last.items] == ["Centro 5"]
+
+def test_cost_center_list_page_orders_by_name_ignoring_case(session: Session):
+    family = _create_family(session, "Família A")
+    repo = SQLAlchemyFamilyCostCenterRepository(session)
+    for name in ("filhos", "Casa de Praia", "Escola"):
+        repo.save(FamilyCostCenter(family_id=family.id, name=name))
+    session.flush()
+
+    page = repo.list_page(page=1, page_size=10)
+
+    assert [c.name for c in page.items] == ["Casa de Praia", "Escola", "filhos"]
+
+def test_cost_center_list_page_beyond_the_last_page_is_empty_but_keeps_the_total(session: Session):
+    family = _create_family(session, "Família A")
+    repo = SQLAlchemyFamilyCostCenterRepository(session)
+    repo.save(FamilyCostCenter(family_id=family.id, name="Casa de Praia"))
+    session.flush()
+
+    page = repo.list_page(page=4, page_size=10)
+
+    assert page.items == []
+    assert page.total == 1
+
+# --- Ordenação ---
+
+def _seed_cost_centers_for_sorting(session: Session) -> SQLAlchemyFamilyCostCenterRepository:
+    souza = _create_family(session, "souza")
+    almeida = _create_family(session, "Almeida")
+    repo = SQLAlchemyFamilyCostCenterRepository(session)
+    repo.save(FamilyCostCenter(family_id=souza.id, name="Escola"))
+    repo.save(FamilyCostCenter(family_id=almeida.id, name="Praia"))
+    repo.save(FamilyCostCenter(family_id=almeida.id, name="Filhos"))
+    session.flush()
+    return repo
+
+def test_cost_center_list_page_sorts_by_name_descending(session: Session):
+    repo = _seed_cost_centers_for_sorting(session)
+
+    page = repo.list_page(page=1, page_size=10, sort_by="name", descending=True)
+
+    assert [c.name for c in page.items] == ["Praia", "Filhos", "Escola"]
+
+def test_cost_center_list_page_sorts_by_family_name_ignoring_case_then_name(session: Session):
+    repo = _seed_cost_centers_for_sorting(session)
+
+    page = repo.list_page(page=1, page_size=10, sort_by="family")
+
+    assert [c.name for c in page.items] == ["Filhos", "Praia", "Escola"]
+
+def test_cost_center_list_page_sorts_by_family_name_descending_keeping_names_ascending(session: Session):
+    repo = _seed_cost_centers_for_sorting(session)
+
+    page = repo.list_page(page=1, page_size=10, sort_by="family", descending=True)
+
+    assert [c.name for c in page.items] == ["Escola", "Filhos", "Praia"]
+
+def test_cost_center_list_page_sorted_by_family_still_reports_the_full_total(session: Session):
+    repo = _seed_cost_centers_for_sorting(session)
+
+    page = repo.list_page(page=2, page_size=2, sort_by="family")
+
+    assert page.total == 3
+    assert [c.name for c in page.items] == ["Escola"]
+
+def test_cost_center_list_page_rejects_an_unknown_sort_field(session: Session):
+    repo = SQLAlchemyFamilyCostCenterRepository(session)
+
+    with pytest.raises(ValueError):
+        repo.list_page(page=1, page_size=10, sort_by="description")
+
+# --- Pesquisa ---
+
+def _seed_cost_centers_for_search(session: Session) -> SQLAlchemyFamilyCostCenterRepository:
+    silva = _create_family(session, "Família Silva")
+    souza = _create_family(session, "Família Souza")
+    repo = SQLAlchemyFamilyCostCenterRepository(session)
+    repo.save(FamilyCostCenter(family_id=silva.id, name="Casa de Praia"))
+    repo.save(FamilyCostCenter(family_id=silva.id, name="Escola"))
+    repo.save(FamilyCostCenter(family_id=souza.id, name="Praia Grande"))
+    repo.save(FamilyCostCenter(family_id=souza.id, name="Filhos"))
+    session.flush()
+    return repo
+
+def test_cost_center_search_matches_the_name_or_the_family_name(session: Session):
+    repo = _seed_cost_centers_for_search(session)
+
+    by_name = repo.list_page(page=1, page_size=10, search="praia")
+    by_family = repo.list_page(page=1, page_size=10, search="silva")
+
+    assert [c.name for c in by_name.items] == ["Casa de Praia", "Praia Grande"]
+    assert [c.name for c in by_family.items] == ["Casa de Praia", "Escola"]
+
+def test_cost_center_search_ignores_case_and_accents(session: Session):
+    family = _create_family(session, "Família Silva")
+    repo = SQLAlchemyFamilyCostCenterRepository(session)
+    repo.save(FamilyCostCenter(family_id=family.id, name="Educação"))
+    session.flush()
+
+    assert [c.name for c in repo.list_page(page=1, page_size=10, search="EDUCACAO").items] == ["Educação"]
+
+def test_cost_center_pagination_works_over_the_search_results(session: Session):
+    silva = _create_family(session, "Silva")
+    souza = _create_family(session, "Souza")
+    repo = SQLAlchemyFamilyCostCenterRepository(session)
+    for n in range(1, 6):
+        repo.save(FamilyCostCenter(family_id=silva.id, name=f"Centro {n}"))
+    for n in range(6, 16):
+        repo.save(FamilyCostCenter(family_id=souza.id, name=f"Centro {n}"))
+    session.flush()
+
+    first = repo.list_page(page=1, page_size=2, search="silva")
+    last = repo.list_page(page=3, page_size=2, search="silva")
+
+    assert first.total == last.total == 5
+    assert [c.name for c in first.items] == ["Centro 1", "Centro 2"]
+    assert [c.name for c in last.items] == ["Centro 5"]
+
+def test_cost_center_search_does_not_duplicate_a_match_in_both_fields(session: Session):
+    family = _create_family(session, "Praia")
+    repo = SQLAlchemyFamilyCostCenterRepository(session)
+    repo.save(FamilyCostCenter(family_id=family.id, name="Casa de Praia"))
+    session.flush()
+
+    page = repo.list_page(page=1, page_size=10, search="praia")
+
+    assert page.total == 1 and len(page.items) == 1

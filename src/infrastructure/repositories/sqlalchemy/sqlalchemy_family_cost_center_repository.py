@@ -1,15 +1,23 @@
 import uuid
 from typing import Optional
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from domain.family.entities import FamilyCostCenter
 from domain.family.exceptions import cost_center_already_exists
+from domain.shared.pagination import Page
+from domain.shared.text import fold_text
 from domain.family.repositories import FamilyCostCenterRepository
 
-from infrastructure.database.models import FamilyCostCenterModel
+from infrastructure.database.models import FamilyModel, FamilyCostCenterModel
 from infrastructure.repositories.sqlalchemy.dependencies import has_dependent_rows
+
+def _contains(column, term: str):
+    """Condição "contém o trecho", sem caixa e sem acentos; %, _ e \\ do termo valem como texto."""
+    escaped = fold_text(term).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return func.fold(column).like(f"%{escaped}%", escape="\\")
+
 
 class SQLAlchemyFamilyCostCenterRepository(FamilyCostCenterRepository):
     def __init__(self, session: Session):
@@ -68,6 +76,26 @@ class SQLAlchemyFamilyCostCenterRepository(FamilyCostCenterRepository):
     def list_all(self) -> list[FamilyCostCenter]:
         models = self.session.query(FamilyCostCenterModel).all()
         return [self._to_domain(m) for m in models]
+
+    def list_page(
+        self, page: int, page_size: int, sort_by: str = "name", descending: bool = False,
+        search: Optional[str] = None,
+    ) -> Page[FamilyCostCenter]:
+        if sort_by not in ("name", "family"):
+            raise ValueError(f"Campo de ordenação inválido: {sort_by!r}.")
+        name = func.lower(FamilyCostCenterModel.name)
+        family_name = func.lower(FamilyModel.name)
+        # Junção 1:1 pela chave primária da família: não duplica linhas.
+        query = self.session.query(FamilyCostCenterModel).outerjoin(FamilyModel, FamilyModel.id == FamilyCostCenterModel.family_id)
+        if search:
+            query = query.filter(or_(_contains(FamilyCostCenterModel.name, search), _contains(FamilyModel.name, search)))
+        if sort_by == "family":
+            order = [family_name.desc() if descending else family_name.asc(), name.asc(), FamilyCostCenterModel.id]
+        else:
+            order = [name.desc() if descending else name.asc(), FamilyCostCenterModel.id]
+        total = query.with_entities(func.count(FamilyCostCenterModel.id)).scalar()
+        models = query.order_by(*order).offset((page - 1) * page_size).limit(page_size).all()
+        return Page(items=[self._to_domain(m) for m in models], total=total)
 
     def delete(self, cost_center_id: uuid.UUID) -> None:
         model = self.session.get(FamilyCostCenterModel, str(cost_center_id))

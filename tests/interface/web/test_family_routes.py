@@ -3,7 +3,8 @@ from decimal import Decimal
 from html import unescape
 
 from application.dtos.family_dtos import CreateFamilyDTO, FamilyResponseDTO, UpdateFamilyDTO
-from domain.family.exceptions import family_already_exists, family_has_dependencies, family_not_found
+from fakes.pagination import page_of
+from domain.family.exceptions import family_has_dependencies, family_not_found
 
 def _family_response(name: str) -> FamilyResponseDTO:
     return FamilyResponseDTO(id=uuid.uuid4(), name=name, current_balance=Decimal("0.00"))
@@ -19,7 +20,7 @@ def test_create_family_calls_service_and_redirects_to_list(client, family_servic
     family_service.create_family.assert_called_once_with(CreateFamilyDTO(name="Família Souza"))
 
 def test_create_family_flashes_success_message_surviving_the_redirect(client, family_service):
-    family_service.list_families.return_value = []
+    family_service.list_families_page.return_value = page_of([])
 
     # follow_redirects segue o 302 na mesma sessão de cookies, como um navegador faria
     response = client.post("/family/create", data={"name": "Família Souza"}, follow_redirects=True)
@@ -28,7 +29,7 @@ def test_create_family_flashes_success_message_surviving_the_redirect(client, fa
     assert 'Família "Família Souza" criada com sucesso.' in unescape(response.get_data(as_text=True))
 
 def test_flash_message_does_not_survive_a_second_request(client, family_service):
-    family_service.list_families.return_value = []
+    family_service.list_families_page.return_value = page_of([])
 
     client.post("/family/create", data={"name": "Família Souza"})
     first_list = client.get("/family/list").get_data(as_text=True)
@@ -38,10 +39,10 @@ def test_flash_message_does_not_survive_a_second_request(client, family_service)
     assert "criada com sucesso" not in second_list
 
 def test_list_families_returns_names_from_service(client, family_service):
-    family_service.list_families.return_value = [
+    family_service.list_families_page.return_value = page_of([
         _family_response("Família Silva"),
         _family_response("Família Souza"),
-    ]
+    ])
 
     response = client.get("/family/list")
 
@@ -49,10 +50,10 @@ def test_list_families_returns_names_from_service(client, family_service):
     html = response.get_data(as_text=True)
     assert "Família Silva" in html
     assert "Família Souza" in html
-    family_service.list_families.assert_called_once_with()
+    family_service.list_families_page.assert_called_once_with(page=None, page_size=None, sort_by=None, sort_dir=None, search=None)
 
 def test_list_families_when_empty(client, family_service):
-    family_service.list_families.return_value = []
+    family_service.list_families_page.return_value = page_of([])
 
     response = client.get("/family/list")
 
@@ -61,7 +62,7 @@ def test_list_families_when_empty(client, family_service):
 
 def test_list_families_action_buttons_are_wired_to_edit_and_delete(client, family_service):
     family = _family_response("Família Silva")
-    family_service.list_families.return_value = [family]
+    family_service.list_families_page.return_value = page_of([family])
 
     html = client.get("/family/list").get_data(as_text=True)
 
@@ -79,22 +80,6 @@ def test_new_family_form_is_presented(client, family_service):
     assert 'action="/family/create"' in html
     assert 'name="name"' in html
     family_service.create_family.assert_not_called()
-
-def test_create_duplicate_family_re_presents_form_with_error(client, family_service):
-    family_service.create_family.side_effect = family_already_exists("Família Souza")
-
-    response = client.post("/family/create", data={"name": "Família Souza"})
-
-    # Não há redirect: o formulário é reapresentado com status de conflito
-    assert response.status_code == 409
-    assert "Location" not in response.headers
-
-    html = response.get_data(as_text=True)
-    assert 'action="/family/create"' in html
-    assert 'value="Família Souza"' in html
-    assert 'Já existe uma família com o nome "Família Souza".' in unescape(html)
-
-    family_service.create_family.assert_called_once_with(CreateFamilyDTO(name="Família Souza"))
 
 def test_edit_family_form_is_presented(client, family_service):
     family_id = uuid.uuid4()
@@ -130,26 +115,12 @@ def test_update_family_calls_service_and_redirects_to_list(client, family_servic
 
 def test_update_family_flashes_success_message(client, family_service):
     family_id = uuid.uuid4()
-    family_service.list_families.return_value = []
+    family_service.list_families_page.return_value = page_of([])
 
     response = client.post(f"/family/update/{family_id}", data={"name": "Nome Novo"}, follow_redirects=True)
 
     assert response.status_code == 200
     assert "atualizada com sucesso" in unescape(response.get_data(as_text=True))
-
-def test_update_duplicate_family_re_presents_form_with_error(client, family_service):
-    family_id = uuid.uuid4()
-    family_service.update_family.side_effect = family_already_exists("Família Souza")
-
-    response = client.post(f"/family/update/{family_id}", data={"name": "Família Souza"})
-
-    assert response.status_code == 409
-    assert "Location" not in response.headers
-
-    html = response.get_data(as_text=True)
-    assert f'action="/family/update/{family_id}"' in html
-    assert 'value="Família Souza"' in html
-    assert 'Já existe uma família com o nome "Família Souza".' in unescape(html)
 
 def test_update_nonexistent_family_returns_404(client, family_service):
     family_id = uuid.uuid4()
@@ -170,7 +141,7 @@ def test_delete_family_calls_service_and_redirects_to_list(client, family_servic
 
 def test_delete_family_flashes_success_message(client, family_service):
     family_id = uuid.uuid4()
-    family_service.list_families.return_value = []
+    family_service.list_families_page.return_value = page_of([])
 
     response = client.post(f"/family/delete/{family_id}", follow_redirects=True)
 
@@ -188,7 +159,7 @@ def test_delete_nonexistent_family_returns_404(client, family_service):
 def test_delete_family_with_dependencies_flashes_error_and_redirects(client, family_service):
     family_id = uuid.uuid4()
     family_service.delete_family.side_effect = family_has_dependencies(family_id)
-    family_service.list_families.return_value = []
+    family_service.list_families_page.return_value = page_of([])
 
     response = client.post(f"/family/delete/{family_id}", follow_redirects=True)
 
@@ -257,3 +228,13 @@ def test_confirm_delete_nonexistent_family_returns_404(client, family_service):
     family_service.preview_family_deletion.side_effect = family_not_found(family_id)
 
     assert client.get(f"/family/confirm-delete/{family_id}").status_code == 404
+
+def test_list_families_with_same_name_are_told_apart_by_uuid_suffix(client, family_service):
+    first = _family_response("Família Silva")
+    second = _family_response("Família Silva")
+    family_service.list_families_page.return_value = page_of([first, second])
+
+    html = unescape(client.get("/family/list").get_data(as_text=True))
+
+    assert f"Família Silva · {str(first.id)[:8]}" in html
+    assert f"Família Silva · {str(second.id)[:8]}" in html

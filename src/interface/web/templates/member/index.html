@@ -1,32 +1,36 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
+{% import "_pagination.html" as pager %}
 
 {% block title %}Membros{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <h1>Membros</h1>
-    <a href="{{ url_for('member.new') }}" class="btn btn-success">+ Novo membro</a>
 </div>
 
 <div class="alert alert-info">
     Provisório: sem login ainda, esta listagem mostra os membros de todas as famílias, não só a sua.
 </div>
 
+{% call pager.search_bar(pagination, 'member.list_members', 'nome ou família') %}
+<a href="{{ url_for('member.new') }}" class="btn btn-success">+ Novo membro</a>
+{% endcall %}
+
 <div class="card card-flush">
     <table class="data-table">
         <thead>
             <tr>
-                <th>Nome</th>
-                <th>Família</th>
+                {{ pager.sortable_th(pagination, 'member.list_members', 'name', 'Nome') }}
+                {{ pager.sortable_th(pagination, 'member.list_members', 'family', 'Família') }}
                 <th class="col-actions">Ações</th>
             </tr>
         </thead>
         <tbody>
             {% for m in members %}
             <tr>
-                <td class="cell-strong">{{ m.name }}</td>
-                <td class="cell-muted">{{ families_by_id.get(m.family_id, '—') }}</td>
+                <td class="cell-strong">{{ m.name|highlight(pagination.search) }}</td>
+                <td class="cell-muted">{{ families_by_id.get(m.family_id)|highlight_label(pagination.search) }}</td>
                 <td>
                     <div class="row-actions">
                         <a href="{{ url_for('member.edit', member_id=m.id) }}" class="btn btn-sm">{{ icons.edit() }} Editar</a>
@@ -36,10 +40,11 @@
             </tr>
             {% else %}
             <tr>
-                <td colspan="3" class="empty-state">Nenhum membro cadastrado ainda.</td>
+                <td colspan="3" class="empty-state">{% if pagination.search %}Nenhum resultado para "{{ pagination.search }}".{% else %}Nenhum membro cadastrado ainda.{% endif %}</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+    {{ pager.controls(pagination, 'member.list_members') }}
 </div>
 {% endblock %}

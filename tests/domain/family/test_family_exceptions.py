@@ -4,7 +4,6 @@ from domain.family.exceptions import (
     cost_center_already_exists,
     cost_center_has_dependencies,
     cost_center_not_found,
-    family_already_exists,
     family_has_dependencies,
     family_not_found,
     member_already_exists,
@@ -16,13 +15,6 @@ from domain.shared.exceptions import (
     EntityHasDependenciesError,
     EntityNotFoundError,
 )
-
-def test_family_already_exists():
-    error = family_already_exists("Silva")
-
-    assert isinstance(error, EntityAlreadyExistsError)
-    assert (error.entity, error.field, error.value) == ("Family", "name", "Silva")
-    assert str(error) == 'Já existe uma família com o nome "Silva".'
 
 def test_family_not_found():
     family_id = uuid.uuid4()
