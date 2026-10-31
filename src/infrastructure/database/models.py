@@ -41,6 +41,21 @@ class MemberModel(Base):
         Index("ix_members_family_id_name_lower", "family_id", func.lower(name), unique=True),
     )
 
+class UserModel(Base):
+    __tablename__ = "users"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    # Nulo para usuários administradores (não pertencem a nenhuma família).
+    family_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("families.id", ondelete="CASCADE"), nullable=True)
+    username: Mapped[str] = mapped_column(String(255), nullable=False)
+    email: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    __table_args__ = (
+        # username e email são únicos globalmente (cada um por si, não composto), case-insensitive.
+        Index("ix_users_username_lower", func.lower(username), unique=True),
+        Index("ix_users_email_lower", func.lower(email), unique=True),
+        Index("ix_users_family_id", "family_id"),
+    )
+
 class FamilyCostCenterModel(Base):
     __tablename__ = "family_cost_centers"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
