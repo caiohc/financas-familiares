@@ -1,0 +1,7 @@
+app
+application
+config
+domain
+infrastructure
+interface
+resources

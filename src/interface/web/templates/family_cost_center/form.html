@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}{% if cost_center %}Editar centro de custo{% else %}Novo centro de custo{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{% if cost_center %}Editar centro de custo{% else %}Novo centro de custo{% endif %}</h1>
+    <a href="{{ url_for('family_cost_center.list_cost_centers') }}" class="btn btn-ghost">Voltar à listagem</a>
+</div>
+
+{% if error %}
+<div class="alert alert-error alert-narrow">{{ error }}</div>
+{% endif %}
+
+<div class="card card-narrow">
+    <form method="POST" action="{{ form_action }}">
+        <div class="form-group">
+            <label for="family_id" class="form-label">Família</label>
+            {% if cost_center %}
+            {# A família de um centro de custo existente não muda: só leitura. #}
+            {% for f in families if f.id == cost_center.family_id %}
+            <div class="form-control form-control-static">{{ f|family_label }}</div>
+            {% endfor %}
+            {% else %}
+            <select id="family_id" name="family_id" required class="form-control">
+                <option value="" disabled {% if not selected_family_id %}selected{% endif %}>Selecione a família</option>
+                {% for f in families %}
+                <option value="{{ f.id }}" {% if f.id == selected_family_id %}selected{% endif %}>{{ f|family_label }}</option>
+                {% endfor %}
+            </select>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="name" class="form-label">Nome</label>
+            <input type="text" id="name" name="name" value="{{ name or (cost_center.name if cost_center else '') }}"
+                placeholder="Ex: Casa de Praia" required autocomplete="off" class="form-control">
+        </div>
+
+        <div class="form-group">
+            <label for="description" class="form-label">Descrição (opcional)</label>
+            <input type="text" id="description" name="description"
+                value="{{ description or (cost_center.description if cost_center and cost_center.description else '') }}"
+                placeholder="Ex: Despesas da casa de praia" autocomplete="off" class="form-control">
+        </div>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-success btn-lg">Salvar</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

@@ -1,0 +1,25 @@
+Metadata-Version: 2.4
+Name: financas-familiares
+Version: 0.1.0
+Summary: Aplicação para controle financeiro familiar
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+Requires-Dist: alembic>=1.19.1
+Requires-Dist: flask>=3.1.3
+Requires-Dist: python-dotenv>=1.2.2
+Requires-Dist: sqlalchemy>=2.0.52
+
+# Controle Financeiro Familiar
+
+Sistema avançado para controle interativo e inteligente de despesas e receitas usando *Clean Architecture*.
+
+Esse projeto serve não somente como um aplicativo resolutivo na manutenção dos gastos familiares, como também é o um projeto base pedagógico destinado ao exercício e demonstração das melhores práticas e soluções técnicas presentes no ecossistema e ferramentas da linguagem Python.
+
+## Consultando a Engenharia do Projeto
+
+Em vez de centralizar tudo nesse documento, seguimos a prática de documentação granular.
+Acesse o diretório `/docs` para mergulhar nos pormenores do projeto. Todo histórico mental está nas páginas a seguir:
+
+- 📖 **[Requisitos Funcionais](docs/requisitos_funcionais.md)** - Funcionalidades da aplicação disponibilizadas para os usuários.
+- ⚙️ **[Requisitos Não Funcionais](docs/requisitos_nao_funcionais.md)** - Necessidades, restrições técnicas e descrição da arquitetura do projeto.
+- 📋 **[Plano de Implementação](docs/plano_implementacao.md)** - O cronograma técnico evolutivo (Fases 1 a 5) das implementações do projeto.

@@ -1,0 +1,71 @@
+{% import "_icons.html" as icons %}
+{# Controles de paginação das listagens: posição atual, tamanho da página e navegação.
+   Usa links (GET) em vez de JavaScript; o tamanho escolhido viaja na própria URL. #}
+{# Cabeçalho de coluna ordenável. Um clique ordena por esta coluna (ascendente); clicando de
+   novo na coluna ativa, inverte o sentido. Reordenar volta para a primeira página, porque a
+   página N de outra ordem não tem relação com o que a pessoa estava vendo. #}
+{% macro sortable_th(pagination, endpoint, field, label) %}
+{% set active = pagination.sort_by == field %}
+{% set next_dir = 'desc' if active and pagination.sort_dir == 'asc' else 'asc' %}
+<th{% if active %} aria-sort="{{ 'ascending' if pagination.sort_dir == 'asc' else 'descending' }}"{% endif %}>
+    <a href="{{ url_for(endpoint, page=1, per_page=pagination.page_size, sort=field, dir=next_dir, q=pagination.search or None) }}" class="sort-link">{{ label }}{% if active %} {{ icons.sort_arrow(pagination.sort_dir) }}{% endif %}</a>
+</th>
+{% endmacro %}
+
+{# Barra acima da tabela: pesquisa à esquerda e, se houver bloco `call`, as ações (ex.: "Novo") à direita.
+   Pesquisa em uma caixa só, enviada com Enter ou pelo ícone. O resultado vira a lista sobre a qual
+   a paginação e a ordenação operam, até a pessoa limpar a pesquisa. Pesquisar volta à primeira
+   página (o campo `page` não é enviado) e mantém o tamanho da página e a ordenação. #}
+{% macro search_bar(pagination, endpoint, scope) %}
+<div class="toolbar">
+<form method="get" action="{{ url_for(endpoint) }}" class="search-form" role="search">
+    <div class="search-field">
+        <input type="search" name="q" value="{{ pagination.search }}" placeholder="Pesquisar por {{ scope }}"
+            aria-label="Pesquisar" autocomplete="off" class="form-control search-input">
+        <button type="submit" class="search-submit" aria-label="Pesquisar">{{ icons.search() }}</button>
+    </div>
+    <input type="hidden" name="per_page" value="{{ pagination.page_size }}">
+    <input type="hidden" name="sort" value="{{ pagination.sort_by }}">
+    <input type="hidden" name="dir" value="{{ pagination.sort_dir }}">
+    {% if pagination.search %}
+    <a href="{{ url_for(endpoint, page=1, per_page=pagination.page_size, sort=pagination.sort_by, dir=pagination.sort_dir) }}" class="btn btn-ghost search-clear">{{ icons.x() }} Limpar</a>
+    {% endif %}
+</form>
+{% if caller %}
+<div class="toolbar-actions">{{ caller() }}</div>
+{% endif %}
+</div>
+{% if pagination.search %}
+<p class="search-summary">{{ pagination.total }} resultado{{ '' if pagination.total == 1 else 's' }} para "{{ pagination.search }}"</p>
+{% endif %}
+{% endmacro %}
+
+{% macro controls(pagination, endpoint) %}
+<nav class="pagination" aria-label="Paginação">
+    <span class="pagination-info">Página {{ pagination.page }} de {{ pagination.total_pages }} · {{ pagination.total }} registros</span>
+
+    <div class="pagination-sizes">
+        <span class="pagination-label">Por página:</span>
+        {% for size in page_sizes %}
+        {% if size == pagination.page_size %}
+        <a href="{{ url_for(endpoint, page=1, per_page=size, sort=pagination.sort_by, dir=pagination.sort_dir, q=pagination.search or None) }}" class="pagination-size active" aria-current="true">{{ size }}</a>
+        {% else %}
+        <a href="{{ url_for(endpoint, page=1, per_page=size, sort=pagination.sort_by, dir=pagination.sort_dir, q=pagination.search or None) }}" class="pagination-size">{{ size }}</a>
+        {% endif %}
+        {% endfor %}
+    </div>
+
+    <div class="pagination-nav">
+        {% if pagination.has_previous %}
+        <a href="{{ url_for(endpoint, page=pagination.page - 1, per_page=pagination.page_size, sort=pagination.sort_by, dir=pagination.sort_dir, q=pagination.search or None) }}" class="btn btn-sm btn-ghost">Anterior</a>
+        {% else %}
+        <span class="btn btn-sm btn-ghost btn-disabled">Anterior</span>
+        {% endif %}
+        {% if pagination.has_next %}
+        <a href="{{ url_for(endpoint, page=pagination.page + 1, per_page=pagination.page_size, sort=pagination.sort_by, dir=pagination.sort_dir, q=pagination.search or None) }}" class="btn btn-sm btn-ghost">Próxima</a>
+        {% else %}
+        <span class="btn btn-sm btn-ghost btn-disabled">Próxima</span>
+        {% endif %}
+    </div>
+</nav>
+{% endmacro %}

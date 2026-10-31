@@ -1,0 +1,616 @@
+:root {
+    /* Controles nativos (lista suspensa, scrollbar) seguem o tema escuro. */
+    color-scheme: dark;
+
+    /* Cores de Fundo Absolutas e Vidros (Glassmorphism) */
+    --bg-color: #0d1117;
+    --panel-bg: #161b22;
+    --glass-border: rgba(255, 255, 255, 0.08);
+
+    /* Textos e Destaques */
+    --text-primary: #e6edf3;
+    --text-secondary: #8b949e;
+
+    /* Tons claros para TEXTO e detalhes sobre o fundo escuro
+       (alertas, foco de campo, hover da barra lateral). */
+    --accent-glow: #79b8ff;
+    --success-color: #56d364;
+    --danger-color: #ff9580;
+    --warning-color: #ffb86b;
+
+    /* Preenchimento dos botões: tons médios e pouco saturados, com texto branco.
+       Contraste do branco sobre cada um ~4,8:1 (WCAG AA para texto pequeno). */
+    --btn-primary: #3a72c4;
+    --btn-success: #2b8048;
+    --btn-danger: #b85246;
+    --on-fill: #ffffff;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    line-height: 1.5;
+    display: flex;
+    min-height: 100vh;
+}
+
+/* Menu Lateral (Sidebar) */
+.sidebar {
+    width: 280px;
+    background-color: var(--panel-bg);
+    border-right: 1px solid var(--glass-border);
+    padding: 2rem 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    transition: width 0.3s ease, padding 0.3s ease;
+    flex-shrink: 0;
+}
+
+body.sidebar-is-collapsed .sidebar {
+    width: 84px;
+    padding: 2rem 0.8rem;
+}
+
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.sidebar-brand {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    transition: opacity 0.2s;
+}
+
+body.sidebar-is-collapsed .sidebar-brand {
+    display: none;
+}
+
+body.sidebar-is-collapsed .sidebar-header {
+    justify-content: center;
+}
+
+.toggle-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0.4rem;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: 0.2s;
+}
+
+.toggle-btn:hover {
+    background-color: rgba(255,255,255,0.1);
+    color: var(--text-primary);
+}
+
+.nav-links {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.nav-links a {
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-weight: 500;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    transition: all 0.2s ease-in-out;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+body.sidebar-is-collapsed .nav-links a {
+    justify-content: center;
+    padding: 0.75rem 0;
+}
+
+body.sidebar-is-collapsed .nav-links a span {
+    display: none;
+}
+
+.nav-links a:hover,
+.nav-links a.active {
+    background-color: rgba(121, 184, 255, 0.1);
+    color: var(--accent-glow);
+}
+
+/* Estrutura Principal */
+.main-content {
+    flex-grow: 1;
+    padding: 3rem 4rem;
+    overflow-y: auto;
+}
+
+.page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2.5rem;
+}
+
+.page-header h1 {
+    font-size: 2rem;
+    font-weight: 600;
+}
+
+/* Botões Globais: todo botão é .btn + uma variante de cor (+ tamanho opcional).
+   Não usar style inline para cor de botão, para manter o padrão. */
+.btn {
+    background-color: var(--btn-primary);
+    color: var(--on-fill);
+    border: 1px solid transparent;
+    padding: 0.6rem 1.2rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: filter 0.15s, background-color 0.15s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    /* Ícone e texto sempre na mesma linha, mesmo com a tela estreita. */
+    white-space: nowrap;
+}
+
+.btn:hover {
+    filter: brightness(1.1);
+}
+
+.btn-success {
+    background-color: var(--btn-success);
+}
+
+.btn-danger {
+    background-color: var(--btn-danger);
+}
+
+.btn-ghost {
+    background-color: transparent;
+    border-color: rgba(255, 255, 255, 0.2);
+    color: var(--text-primary);
+}
+
+.btn-ghost:hover {
+    filter: none;
+    background-color: rgba(255, 255, 255, 0.06);
+}
+
+.btn-sm {
+    padding: 0.35rem 0.8rem;
+    font-size: 0.8rem;
+}
+
+.btn-lg {
+    padding: 0.8rem 2rem;
+    font-size: 1rem;
+}
+
+/* Mensagens: fundo levemente tingido, borda discreta e texto claro.
+   Erros/alertas em laranja, que lê bem no fundo escuro sem agredir. */
+.alert {
+    padding: 0.9rem 1.2rem;
+    border-radius: 8px;
+    border: 1px solid;
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.alert-error {
+    background-color: rgba(255, 184, 107, 0.08);
+    border-color: rgba(255, 184, 107, 0.35);
+    color: var(--warning-color);
+}
+
+.alert-success {
+    background-color: rgba(86, 211, 100, 0.08);
+    border-color: rgba(86, 211, 100, 0.3);
+    color: var(--success-color);
+}
+
+.alert-info {
+    background-color: rgba(121, 184, 255, 0.07);
+    border-color: rgba(121, 184, 255, 0.25);
+    color: var(--accent-glow);
+}
+
+.alert-narrow {
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.row-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+/* Containers e Cards como vidro opaco */
+.card {
+    background-color: var(--panel-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+}
+
+/* Cards: variantes de largura/recorte */
+.card-narrow {
+    max-width: 600px;
+    margin: 0 auto;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.card-flush {
+    padding: 0;
+    overflow: hidden;
+}
+
+/* Tabelas de listagem */
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+}
+
+.data-table thead tr {
+    background-color: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.data-table th {
+    padding: 1rem 1.5rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.data-table td {
+    padding: 1rem 1.5rem;
+}
+
+.data-table tbody tr {
+    border-bottom: 1px solid var(--glass-border);
+    transition: background-color 0.2s;
+}
+
+.data-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.data-table tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.data-table .col-actions {
+    text-align: right;
+}
+
+.cell-strong {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.cell-muted {
+    color: var(--text-secondary);
+}
+
+.cell-index {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.data-table td.empty-state {
+    padding: 3rem;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+/* Formulários */
+.form-group {
+    margin-bottom: 2rem;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.8rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--glass-border);
+    background-color: rgba(0, 0, 0, 0.3);
+    color: var(--text-primary);
+    font-size: 1.1rem;
+    outline: none;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: border-color 0.2s;
+}
+
+.form-control:focus {
+    border-color: var(--accent-glow);
+}
+
+/* A lista aberta do <select> é desenhada pelo navegador e ignora o fundo
+   translúcido do campo; sem isto ela aparece branca. */
+select.form-control option {
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+}
+
+/* Valor exibido só para leitura, com a mesma aparência de um campo */
+.form-control-static {
+    color: var(--text-secondary);
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    padding-top: 1rem;
+    border-top: 1px solid var(--glass-border);
+}
+
+/* Página de confirmação de exclusão */
+.confirm-question {
+    margin-bottom: 0.5rem;
+    color: var(--text-secondary);
+}
+
+.confirm-item {
+    margin-bottom: 2rem;
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* Etiquetas (ex.: tipo da categoria). Mesmo esquema dos alertas:
+   fundo levemente tingido + texto claro, para ler bem no fundo escuro. */
+.badge {
+    display: inline-block;
+    padding: 0.2rem 0.7rem;
+    border-radius: 999px;
+    border: 1px solid;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.badge-income {
+    background-color: rgba(86, 211, 100, 0.08);
+    border-color: rgba(86, 211, 100, 0.3);
+    color: var(--success-color);
+}
+
+.badge-expense {
+    background-color: rgba(255, 184, 107, 0.08);
+    border-color: rgba(255, 184, 107, 0.3);
+    color: var(--warning-color);
+}
+
+/* Dashboard: rótulo de cada entidade é um link para a sua listagem */
+.entity-link {
+    color: var(--text-primary);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.entity-link:hover {
+    color: var(--accent-glow);
+    text-decoration: underline;
+}
+
+.data-table .col-count {
+    text-align: right;
+}
+
+.count-value {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: var(--accent-glow);
+}
+
+/* Itens de menu de fatias ainda não construídas: mesmo layout dos links, sem interação. */
+.nav-soon {
+    color: var(--text-secondary);
+    opacity: 0.55;
+    font-weight: 500;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    white-space: nowrap;
+    overflow: hidden;
+    cursor: default;
+}
+
+.soon-tag {
+    margin-left: auto;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    border: 1px solid var(--glass-border);
+}
+
+body.sidebar-is-collapsed .nav-soon {
+    justify-content: center;
+    padding: 0.75rem 0;
+}
+
+body.sidebar-is-collapsed .nav-soon span {
+    display: none;
+}
+
+/* Ícones de linha dentro de botões (ver templates/_icons.html) */
+.icon {
+    width: 1em;
+    height: 1em;
+    flex-shrink: 0;
+}
+
+/* Paginação das listagens */
+.pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    border-top: 1px solid var(--glass-border);
+    color: var(--text-secondary);
+}
+
+.pagination-sizes,
+.pagination-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.pagination-size {
+    padding: 0.25rem 0.75rem;
+    border-radius: 6px;
+    border: 1px solid var(--glass-border);
+    color: var(--text-primary);
+    text-decoration: none;
+}
+
+.pagination-size:hover {
+    border-color: var(--accent-glow);
+}
+
+.pagination-size.active {
+    background-color: var(--btn-primary);
+    border-color: var(--btn-primary);
+    color: var(--on-fill);
+}
+
+.btn-disabled {
+    opacity: 0.4;
+    cursor: default;
+    pointer-events: none;
+}
+
+/* Cabeçalhos ordenáveis */
+.sort-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: inherit;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.sort-link:hover {
+    color: var(--text-primary);
+}
+
+.data-table th[aria-sort] {
+    color: var(--text-primary);
+}
+
+.sort-arrow {
+    color: var(--accent-glow);
+}
+
+/* Pesquisa nas listagens */
+/* Pesquisa à esquerda, ações (ex.: Novo) à direita */
+.toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.toolbar-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-left: auto;
+}
+
+.search-form {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.search-field {
+    position: relative;
+    flex: 1;
+    max-width: 480px;
+}
+
+.search-input {
+    padding: 0.6rem 2.75rem 0.6rem 1rem;
+    font-size: 0.95rem;
+}
+
+.search-submit {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 2.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    border-radius: 0 8px 8px 0;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.search-submit:hover,
+.search-submit:focus-visible {
+    color: var(--accent-glow);
+}
+
+.search-summary {
+    margin-bottom: 0.75rem;
+    color: var(--text-secondary);
+}
+
+mark {
+    background-color: rgba(255, 184, 107, 0.3);
+    color: inherit;
+    border-radius: 3px;
+    padding: 0 1px;
+}

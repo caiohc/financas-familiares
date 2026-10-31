@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% import "_icons.html" as icons %}
+{% import "_pagination.html" as pager %}
+
+{% block title %}Centros de custo{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>Centros de custo</h1>
+</div>
+
+<div class="alert alert-info">
+    Provisório: sem login ainda, esta listagem mostra os centros de custo de todas as famílias, não só a sua.
+</div>
+
+{% call pager.search_bar(pagination, 'family_cost_center.list_cost_centers', 'nome ou família') %}
+<a href="{{ url_for('family_cost_center.new') }}" class="btn btn-success">+ Novo centro de custo</a>
+{% endcall %}
+
+<div class="card card-flush">
+    <table class="data-table">
+        <thead>
+            <tr>
+                {{ pager.sortable_th(pagination, 'family_cost_center.list_cost_centers', 'name', 'Nome') }}
+                {{ pager.sortable_th(pagination, 'family_cost_center.list_cost_centers', 'family', 'Família') }}
+                <th>Descrição</th>
+                <th class="col-actions">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cc in cost_centers %}
+            <tr>
+                <td class="cell-strong">{{ cc.name|highlight(pagination.search) }}</td>
+                <td class="cell-muted">{{ families_by_id.get(cc.family_id)|highlight_label(pagination.search) }}</td>
+                <td class="cell-muted">{{ cc.description or '—' }}</td>
+                <td>
+                    <div class="row-actions">
+                        <a href="{{ url_for('family_cost_center.edit', cost_center_id=cc.id) }}" class="btn btn-sm">{{ icons.edit() }} Editar</a>
+                        <a href="{{ url_for('family_cost_center.confirm_delete', cost_center_id=cc.id) }}" class="btn btn-sm btn-danger">{{ icons.trash() }} Excluir</a>
+                    </div>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="4" class="empty-state">{% if pagination.search %}Nenhum resultado para "{{ pagination.search }}".{% else %}Nenhum centro de custo cadastrado ainda.{% endif %}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {{ pager.controls(pagination, 'family_cost_center.list_cost_centers') }}
+</div>
+{% endblock %}

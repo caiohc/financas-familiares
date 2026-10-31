@@ -3,6 +3,29 @@ from dataclasses import dataclass
 from typing import Optional
 from decimal import Decimal
 
+from domain.financial.entities import TransactionType
+
+@dataclass(kw_only=True)
+class CreateCategoryDTO:
+    name: str
+    type: Optional[TransactionType]
+
+@dataclass(kw_only=True)
+class UpdateCategoryDTO:
+    name: str
+    type: Optional[TransactionType]
+
+@dataclass(kw_only=True)
+class CategoryResponseDTO:
+    id: uuid.UUID
+    name: str
+    type: TransactionType
+
+@dataclass(kw_only=True)
+class SeedResultDTO:
+    created: int
+    skipped: int
+
 @dataclass(kw_only=True)
 class CreateBankAccountDTO:
     """Entrada bruta para processar a criação de conta bancária por uma rota isolada."""

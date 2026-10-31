@@ -5,24 +5,20 @@ from dotenv import load_dotenv
 # Carrega as variáveis de ambiente do arquivo .env
 load_dotenv()
 
-# Caminho Base do Projeto (Raiz) - Lido obrigatoriamente do .env
-PROJECT_ROOT_ENV = os.getenv("PROJECT_ROOT")
-if not PROJECT_ROOT_ENV:
-    raise RuntimeError("A variável de ambiente 'PROJECT_ROOT' deve estar definida no arquivo .env")
+class Config:
+    """Configurações centrais da aplicação lidas do ambiente."""
+    
+    # 1. URI do Banco de Dados
+    # Em produção, a variável deve vir completa via dotenv (ex: postgresql://...).
+    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URI")
 
-BASE_DIR = Path(PROJECT_ROOT_ENV).resolve()
+    # Chave usada para assinar o cookie de sessão (ex: flash messages).
+    SECRET_KEY = os.getenv("SECRET_KEY")
 
-# Definição dos caminhos lidos do .env ou com valores padrão seguros
-DB_PATH = os.getenv("DB_PATH", "app.db")
-CATEGORIES_PATH = os.getenv("CATEGORIES_PATH", r"src\resources\default_categories.json")
+    # JSON com as categorias padrão, usado pelo comando `flask seed-categories`.
+    CATEGORIES_PATH = os.getenv(
+        "CATEGORIES_PATH", str(Path(__file__).parent / "resources" / "default_categories.json")
+    )
 
-# Converte caminhos relativos em caminhos absolutos baseados na raiz do projeto
-def get_absolute_path(path_str: str) -> Path:
-    path = Path(path_str)
-    if path.is_absolute():
-        return path
-    return BASE_DIR / path
-
-# Atalhos para caminhos absolutos comumente usados
-DB_ABS_PATH = get_absolute_path(DB_PATH)
-DEFAULT_CATEGORIES_ABS_PATH = get_absolute_path(CATEGORIES_PATH)
+    # 2. Outras configurações de infraestrutura
+    DEBUG = os.getenv("FLASK_DEBUG", "True").lower() in ("true", "1", "t")

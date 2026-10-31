@@ -1,36 +1,29 @@
-from typing import Generator
 from sqlalchemy import create_engine
-from sqlalchemy.orm import scoped_session, sessionmaker, Session
-import os
-import sys
+from sqlalchemy.orm import sessionmaker
 
-# Ajustando import do DB_ABS_PATH da raiz @ToDo: refatorar para que seja algo mais limpo
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))) 
-from config import DB_ABS_PATH
+# Criamos a Fábrica de Sessões pura. Sem mágicas atreladas a Threads ou ao Flask.
+SessionLocal = sessionmaker(autocommit=False, autoflush=False)
 
-# 1. Configuração do Engine
-DATABASE_URL = f"sqlite:///{DB_ABS_PATH}"
+def init_db(app):
+    """Inicializa o banco de dados definindo o Engine."""
+    database_uri = app.config.get("SQLALCHEMY_DATABASE_URI")
 
-engine = create_engine(
-    DATABASE_URL,
-    echo=True,  # Em dev, colocar como True para ver o SQL gerado no console
-    connect_args={"check_same_thread": False}
-)
+    if not database_uri:
+        raise RuntimeError(
+            "DATABASE_URI não definida."
+        )
 
-from sqlalchemy.orm import scoped_session, sessionmaker
+    # 1. Cria o Engine a partir da URL fornecida (seja PostgreSQL ou SQLite)
+    engine = create_engine(
+        database_uri,
+        echo=app.config.get("DEBUG", False),
+        connect_args={"check_same_thread": False} if "sqlite" in database_uri else {}
+    )
 
-# 2. Configuração da Fábrica de Sessões (Unit of Work)
-session_factory = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-SessionLocal = scoped_session(session_factory)
-
-
-
-# 4. Injeção de Dependência (Generator)
-# Esta função fornece uma Sessão que será injetada nos repositórios.
-def get_db_session() -> Generator[Session, None, None]:
-    """Cria uma nova sessão de banco de dados para uma requisição/operação."""
-    session = SessionLocal()
-    try:
-        yield session
-    finally:
-        session.close()
+    # 2. Conecta a nossa fábrica local ao Engine recém-criado
+    SessionLocal.configure(bind=engine)
+    
+    # Observação: Não precisamos mais do @app.teardown_appcontext.
+    # Nossa arquitetura usando Unit of Work + DTOs garante que a sessão
+    # seja fechada de forma determinística no fim do bloco 'with', sem
+    # acoplamento com o ciclo de vida da requisição HTTP do Flask.

@@ -1,6 +1,6 @@
 from decimal import Decimal
 from datetime import date
-from sqlalchemy import String, Numeric, Boolean, Date, Enum, ForeignKey, Table, Column, Integer
+from sqlalchemy import String, Numeric, Boolean, Date, Enum, ForeignKey, Table, Column, Integer, Index, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
 from domain.financial.entities import TransactionType, AccountType
 
@@ -15,17 +15,31 @@ bill_transfer_settlements = Table(
     Column("transfer_id", String(36), ForeignKey("transfers.id", ondelete="CASCADE"), primary_key=True)
 )
 
+import infrastructure.database.sqlite_functions  # noqa: F401  (registra fold() no SQLite)
+
+
 class FamilyModel(Base):
     __tablename__ = "families"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     current_balance: Mapped[Decimal] = mapped_column(Numeric(15, 2), default=Decimal('0.00'), nullable=False)
 
+    __table_args__ = (
+        # Nome não é único (várias famílias podem se chamar "Silva"); o índice
+        # sobre lower(name) existe só para acelerar busca e ordenação.
+        Index("ix_families_name_lower", func.lower(name)),
+    )
+
 class MemberModel(Base):
     __tablename__ = "members"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     family_id: Mapped[str] = mapped_column(String(36), ForeignKey("families.id", ondelete="CASCADE"), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    __table_args__ = (
+        # Nome único por família (case-insensitive), famílias diferentes podem repetir nomes.
+        Index("ix_members_family_id_name_lower", "family_id", func.lower(name), unique=True),
+    )
 
 class FamilyCostCenterModel(Base):
     __tablename__ = "family_cost_centers"
@@ -34,11 +48,21 @@ class FamilyCostCenterModel(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
+    __table_args__ = (
+        # Nome único por família (case-insensitive), famílias diferentes podem repetir nomes.
+        Index("ix_family_cost_centers_family_id_name_lower", "family_id", func.lower(name), unique=True),
+    )
+
 class CategoryModel(Base):
     __tablename__ = "categories"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     type: Mapped[TransactionType] = mapped_column(Enum(TransactionType), nullable=False)
+
+    __table_args__ = (
+        # Categorias são globais: nome único em toda a base (case-insensitive), independente do tipo.
+        Index("ix_categories_name_lower", func.lower(name), unique=True),
+    )
 
 # -- HIERARQUIA DE CONTAS (Class Table Inheritance) --
 class AccountModel(Base):
