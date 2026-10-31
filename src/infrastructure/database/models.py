@@ -1,8 +1,9 @@
 from decimal import Decimal
 from datetime import date
-from sqlalchemy import String, Numeric, Boolean, Date, Enum, ForeignKey, Table, Column, Integer, Index, func
+from sqlalchemy import String, Numeric, Boolean, Date, Enum, ForeignKey, Table, Column, Integer, Index, CheckConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
 from domain.financial.entities import TransactionType, AccountType
+from domain.identity.entities import Role
 
 class Base(DeclarativeBase):
     pass
@@ -44,16 +45,28 @@ class MemberModel(Base):
 class UserModel(Base):
     __tablename__ = "users"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    # Nulo para usuários administradores (não pertencem a nenhuma família).
+    role: Mapped[Role] = mapped_column(Enum(Role), nullable=False)
+    # Nulo apenas para os papéis de nível de sistema (ROOT e SYSTEM_ADMIN).
     family_id: Mapped[str | None] = mapped_column(String(36), ForeignKey("families.id", ondelete="CASCADE"), nullable=True)
+    # Nome da pessoa. Nulo apenas para o ROOT, que não representa uma pessoa.
+    name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     username: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    must_change_password: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
     __table_args__ = (
         # username e email são únicos globalmente (cada um por si, não composto), case-insensitive.
         Index("ix_users_username_lower", func.lower(username), unique=True),
         Index("ix_users_email_lower", func.lower(email), unique=True),
         Index("ix_users_family_id", "family_id"),
+        # Rede de segurança das invariantes do domínio: família nula <=> papel de nível de sistema;
+        # nome obrigatório para todos, exceto o ROOT.
+        CheckConstraint(
+            "(role IN ('ROOT', 'SYSTEM_ADMIN') AND family_id IS NULL) OR (role NOT IN ('ROOT', 'SYSTEM_ADMIN') AND family_id IS NOT NULL)",
+            name="ck_users_role_family",
+        ),
+        CheckConstraint("role = 'ROOT' OR (name IS NOT NULL AND trim(name) <> '')", name="ck_users_name_required"),
     )
 
 class FamilyCostCenterModel(Base):

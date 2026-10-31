@@ -26,6 +26,18 @@ def family_label(family) -> str:
     return str(family_label_parts(family))
 
 
+ROLE_LABELS = {
+    "ROOT": "Root",
+    "SYSTEM_ADMIN": "Administrador do sistema",
+    "FAMILY_ADMIN": "Administrador da família",
+    "FAMILY_USER": "Usuário da família",
+}
+
+
+def role_label(role) -> str:
+    return ROLE_LABELS[role.value]
+
+
 def highlight(text: Optional[str], term: Optional[str]) -> Markup:
     """Texto escapado com <mark> em cada trecho que casa com a pesquisa (sem caixa e sem acentos)."""
     text = "" if text is None else str(text)

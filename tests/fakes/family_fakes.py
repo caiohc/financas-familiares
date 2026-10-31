@@ -7,6 +7,7 @@ from domain.family.repositories import FamilyRepository, FamilyCostCenterReposit
 from domain.family.entities import Family, FamilyCostCenter, Member
 from application.interfaces.unit_of_work import AbstractUnitOfWork
 from fakes.financial_fakes import FakeCategoryRepository
+from fakes.identity_fakes import FakeUserRepository
 
 
 class FakeFamilyRepository(FamilyRepository):
@@ -177,6 +178,7 @@ class FakeUnitOfWork(AbstractUnitOfWork):
         self.members = FakeMemberRepository(self.families)
         self.family_cost_centers = FakeFamilyCostCenterRepository(self.families)
         self.categories = FakeCategoryRepository()
+        self.users = FakeUserRepository()
         self.committed = False
 
     def __enter__(self):

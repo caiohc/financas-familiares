@@ -96,11 +96,12 @@ LISTINGS_WITH_NEW_BUTTON = [
     ("/family/list", "/family/new", "family_service", "list_families_page"),
     ("/member/list", "/member/new", "member_service", "list_all_members_page"),
     ("/cost-center/list", "/cost-center/new", "family_cost_center_service", "list_all_family_cost_centers_page"),
+    ("/user/list", "/user/new", "user_service", "list_users_page"),
 ]
 
 
 
-@pytest.mark.parametrize("url,new_url,service_name,method", LISTINGS_WITH_NEW_BUTTON, ids=["family", "member", "cost_center"])
+@pytest.mark.parametrize("url,new_url,service_name,method", LISTINGS_WITH_NEW_BUTTON, ids=["family", "member", "cost_center", "user"])
 def test_new_button_sits_on_the_right_of_the_search_bar_not_in_the_page_header(
     request, client, family_service, url, new_url, service_name, method
 ):

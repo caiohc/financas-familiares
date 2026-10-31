@@ -1,4 +1,4 @@
-"""Paginação das três listagens da fatia Família (famílias, membros e centros de custo)."""
+"""Paginação das listagens (famílias, membros, centros de custo e usuários)."""
 import re
 import uuid
 from decimal import Decimal
@@ -7,6 +7,8 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 
 from application.dtos.family_dtos import FamilyCostCenterResponseDTO, FamilyResponseDTO, MemberResponseDTO
+from application.dtos.identity_dtos import UserResponseDTO
+from domain.identity.entities import Role
 from fakes.pagination import page_of
 
 def _family(name: str = "Silva") -> FamilyResponseDTO:
@@ -25,16 +27,24 @@ LISTINGS = [
             id=uuid.uuid4(), family_id=uuid.uuid4(), name=f"Centro {n}", description=None
         ),
     ),
+    (
+        "/user/list", "user_service", "list_users_page",
+        lambda n: UserResponseDTO(
+            id=uuid.uuid4(), role=Role.FAMILY_USER, family_id=uuid.uuid4(), name=f"Pessoa {n}",
+            username=f"pessoa{n}", email=f"pessoa{n}@example.com", must_change_password=True,
+        ),
+    ),
 ]
-LISTING_IDS = ["family", "member", "cost_center"]
+LISTING_IDS = ["family", "member", "cost_center", "user"]
 
 @pytest.fixture(params=LISTINGS, ids=LISTING_IDS)
-def listing(request, client, family_service, member_service, family_cost_center_service):
+def listing(request, client, family_service, member_service, family_cost_center_service, user_service):
     url, service_name, method, make_item = request.param
     services = {
         "family_service": family_service,
         "member_service": member_service,
         "family_cost_center_service": family_cost_center_service,
+        "user_service": user_service,
     }
     family_service.list_families.return_value = []
     paged_method = getattr(services[service_name], method)

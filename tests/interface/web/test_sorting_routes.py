@@ -1,4 +1,4 @@
-"""Ordenação pelo cabeçalho das três listagens da fatia Família."""
+"""Ordenação pelo cabeçalho das listagens (fatia Família e Usuários)."""
 import re
 import uuid
 from decimal import Decimal
@@ -8,6 +8,8 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 
 from application.dtos.family_dtos import FamilyCostCenterResponseDTO, FamilyResponseDTO, MemberResponseDTO
+from application.dtos.identity_dtos import UserResponseDTO
+from domain.identity.entities import Role
 from fakes.pagination import page_of
 
 def _family(name: str = "Silva") -> FamilyResponseDTO:
@@ -19,6 +21,12 @@ def _member(n: int = 1) -> MemberResponseDTO:
 def _cost_center(n: int = 1) -> FamilyCostCenterResponseDTO:
     return FamilyCostCenterResponseDTO(id=uuid.uuid4(), family_id=uuid.uuid4(), name=f"Centro {n}", description=None)
 
+def _user(n: int = 1) -> UserResponseDTO:
+    return UserResponseDTO(
+        id=uuid.uuid4(), role=Role.FAMILY_USER, family_id=uuid.uuid4(), name=f"Pessoa {n}",
+        username=f"pessoa{n}", email=f"pessoa{n}@example.com", must_change_password=True,
+    )
+
 # (url, serviço-double, método paginado, item, campos ordenáveis)
 LISTINGS = [
     ("/family/list", "family_service", "list_families_page", lambda: _family("Família 1"), ["name"]),
@@ -27,15 +35,17 @@ LISTINGS = [
         "/cost-center/list", "family_cost_center_service", "list_all_family_cost_centers_page",
         _cost_center, ["name", "family"],
     ),
+    ("/user/list", "user_service", "list_users_page", _user, ["name", "username", "email"]),
 ]
 
-@pytest.fixture(params=LISTINGS, ids=["family", "member", "cost_center"])
-def listing(request, client, family_service, member_service, family_cost_center_service):
+@pytest.fixture(params=LISTINGS, ids=["family", "member", "cost_center", "user"])
+def listing(request, client, family_service, member_service, family_cost_center_service, user_service):
     url, service_name, method, make_item, fields = request.param
     services = {
         "family_service": family_service,
         "member_service": member_service,
         "family_cost_center_service": family_cost_center_service,
+        "user_service": user_service,
     }
     family_service.list_families.return_value = []
     paged_method = getattr(services[service_name], method)
@@ -123,13 +133,14 @@ def test_clicking_the_active_header_toggles_direction_and_returns_to_first_page(
 
 def test_clicking_another_header_starts_ascending_and_returns_to_first_page(client, listing):
     url, paged_method, make_item, fields = listing
-    if "family" not in fields:
+    other = next((f for f in fields if f != "name"), None)
+    if other is None:
         pytest.skip("só há um campo ordenável nesta listagem")
     paged_method.return_value = page_of([make_item()], page=2, page_size=10, total=30, sort_by="name", sort_dir="desc", search=None)
 
-    query = _query(_header(client.get(url).get_data(as_text=True), "family"))
+    query = _query(_header(client.get(url).get_data(as_text=True), other))
 
-    assert query["sort"] == ["family"]
+    assert query["sort"] == [other]
     assert query["dir"] == ["asc"]
     assert query["page"] == ["1"]
 

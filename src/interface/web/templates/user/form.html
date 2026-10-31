@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}{% if user %}Editar usuário{% else %}Novo usuário{% endif %}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{% if user %}Editar usuário{% else %}Novo usuário{% endif %}</h1>
+    <a href="{{ url_for('user.list_users') }}" class="btn btn-ghost">Voltar à listagem</a>
+</div>
+
+{% if error %}
+<div class="alert alert-error alert-narrow">{{ error }}</div>
+{% endif %}
+
+<div class="card card-narrow">
+    <form method="POST" action="{{ form_action }}">
+        <div class="form-group">
+            <label for="role" class="form-label">Papel</label>
+            {% if user %}
+            {# O papel de um usuário existente não muda: só leitura. #}
+            <div class="form-control form-control-static">{{ user.role|role_label }}</div>
+            {% else %}
+            <select id="role" name="role" required class="form-control">
+                <option value="" disabled {% if not values.role %}selected{% endif %}>Selecione o papel</option>
+                {% for r in roles %}
+                <option value="{{ r.value }}" {% if r.value == values.role %}selected{% endif %}>{{ r|role_label }}</option>
+                {% endfor %}
+            </select>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="family_id" class="form-label">Família</label>
+            {% if user %}
+            {# A família de um usuário existente não muda: só leitura. #}
+            {% if user.family_id %}
+            {% for f in families if f.id == user.family_id %}
+            <div class="form-control form-control-static">{{ f|family_label }}</div>
+            {% endfor %}
+            {% else %}
+            <div class="form-control form-control-static">&mdash; (nível de sistema)</div>
+            {% endif %}
+            {% else %}
+            <select id="family_id" name="family_id" class="form-control">
+                <option value="" {% if not values.family_id %}selected{% endif %}>Nenhuma (somente administrador do sistema)</option>
+                {% for f in families %}
+                <option value="{{ f.id }}" {% if f.id|string == values.family_id %}selected{% endif %}>{{ f|family_label }}</option>
+                {% endfor %}
+            </select>
+            {% endif %}
+        </div>
+
+        <div class="form-group">
+            <label for="name" class="form-label">Nome</label>
+            <input type="text" id="name" name="name" value="{{ values.name }}"
+                placeholder="Ex: João da Silva" {% if not user or user.role.value != 'ROOT' %}required{% endif %} autocomplete="off" class="form-control">
+        </div>
+
+        <div class="form-group">
+            <label for="username" class="form-label">Usuário</label>
+            <input type="text" id="username" name="username" value="{{ values.username }}"
+                placeholder="Ex: joao.silva" required autocomplete="off" class="form-control">
+        </div>
+
+        <div class="form-group">
+            <label for="email" class="form-label">E-mail</label>
+            <input type="email" id="email" name="email" value="{{ values.email }}"
+                placeholder="Ex: joao@exemplo.com" required autocomplete="off" class="form-control">
+        </div>
+
+        {% if not user %}
+        <div class="form-group">
+            <label for="temporary_password" class="form-label">Senha temporária</label>
+            <input type="password" id="temporary_password" name="temporary_password"
+                required autocomplete="new-password" class="form-control">
+            <p class="form-hint">O usuário deverá trocá-la no primeiro acesso.</p>
+        </div>
+        {% endif %}
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-success btn-lg">Salvar</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

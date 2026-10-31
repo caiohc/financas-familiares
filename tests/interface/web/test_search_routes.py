@@ -1,4 +1,4 @@
-"""Pesquisa nas três listagens da fatia Família: caixa única, enviada com Enter ou com o ícone de busca."""
+"""Pesquisa nas listagens (fatia Família e Usuários): caixa única, enviada com Enter ou com o ícone de busca."""
 import re
 import uuid
 from decimal import Decimal
@@ -8,6 +8,8 @@ from urllib.parse import parse_qs, urlparse
 import pytest
 
 from application.dtos.family_dtos import FamilyCostCenterResponseDTO, FamilyResponseDTO, MemberResponseDTO
+from application.dtos.identity_dtos import UserResponseDTO
+from domain.identity.entities import Role
 from fakes.pagination import page_of
 
 def _family(name: str = "Família Silva") -> FamilyResponseDTO:
@@ -19,6 +21,12 @@ def _member(name: str = "Ana") -> MemberResponseDTO:
 def _cost_center(name: str = "Escola") -> FamilyCostCenterResponseDTO:
     return FamilyCostCenterResponseDTO(id=uuid.uuid4(), family_id=uuid.uuid4(), name=name, description=None)
 
+def _user(name: str = "Ana") -> UserResponseDTO:
+    return UserResponseDTO(
+        id=uuid.uuid4(), role=Role.FAMILY_USER, family_id=uuid.uuid4(), name=name, username="ana",
+        email="ana@example.com", must_change_password=True,
+    )
+
 LISTINGS = [
     ("/family/list", "family_service", "list_families_page", _family, "nome"),
     ("/member/list", "member_service", "list_all_members_page", _member, "nome ou família"),
@@ -26,15 +34,17 @@ LISTINGS = [
         "/cost-center/list", "family_cost_center_service", "list_all_family_cost_centers_page",
         _cost_center, "nome ou família",
     ),
+    ("/user/list", "user_service", "list_users_page", _user, "nome, usuário ou e-mail"),
 ]
 
-@pytest.fixture(params=LISTINGS, ids=["family", "member", "cost_center"])
-def listing(request, client, family_service, member_service, family_cost_center_service):
+@pytest.fixture(params=LISTINGS, ids=["family", "member", "cost_center", "user"])
+def listing(request, client, family_service, member_service, family_cost_center_service, user_service):
     url, service_name, method, make_item, scope = request.param
     services = {
         "family_service": family_service,
         "member_service": member_service,
         "family_cost_center_service": family_cost_center_service,
+        "user_service": user_service,
     }
     family_service.list_families.return_value = []
     paged_method = getattr(services[service_name], method)

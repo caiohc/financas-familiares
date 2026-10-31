@@ -5,6 +5,7 @@ from infrastructure.repositories.sqlalchemy.sqlalchemy_family_cost_center_reposi
 )
 from infrastructure.repositories.sqlalchemy.sqlalchemy_member_repository import SQLAlchemyMemberRepository
 from infrastructure.repositories.sqlalchemy.sqlalchemy_category_repository import SQLAlchemyCategoryRepository
+from infrastructure.repositories.sqlalchemy.sqlalchemy_user_repository import SQLAlchemyUserRepository
 
 class SQLAlchemyUnitOfWork(AbstractUnitOfWork):
     """
@@ -23,6 +24,7 @@ class SQLAlchemyUnitOfWork(AbstractUnitOfWork):
         self.members = SQLAlchemyMemberRepository(self.session)
         self.categories = SQLAlchemyCategoryRepository(self.session)
         self.family_cost_centers = SQLAlchemyFamilyCostCenterRepository(self.session)
+        self.users = SQLAlchemyUserRepository(self.session)
 
         return super().__enter__()
 

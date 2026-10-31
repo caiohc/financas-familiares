@@ -376,6 +376,13 @@ select.form-control option {
     color: var(--text-secondary);
 }
 
+/* Explicação curta abaixo de um campo */
+.form-hint {
+    margin-top: 0.4rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
 .form-actions {
     display: flex;
     gap: 1rem;

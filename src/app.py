@@ -48,8 +48,18 @@ def dashboard_service_factory():
     uow = SQLAlchemyUnitOfWork(SessionLocal)
     return DashboardService(uow=uow)
 
+def user_service_factory():
+    """Fábrica padrão para uso em produção (com SQLAlchemy real)."""
+    from infrastructure.database.database import SessionLocal
+    from infrastructure.database.unit_of_work import SQLAlchemyUnitOfWork
+    from infrastructure.security.password_hasher import WerkzeugPasswordHasher
+    from application.services.user_service import UserService
+
+    uow = SQLAlchemyUnitOfWork(SessionLocal)
+    return UserService(uow=uow, password_hasher=WerkzeugPasswordHasher())
+
 from application.dtos.shared_dtos import ALLOWED_PAGE_SIZES
-from interface.web.labels import family_label, highlight, highlight_label
+from interface.web.labels import family_label, highlight, highlight_label, role_label
 
 
 def create_app(test_config=None):
@@ -76,6 +86,7 @@ def create_app(test_config=None):
     app.jinja_env.filters['family_label'] = family_label
     app.jinja_env.filters['highlight'] = highlight
     app.jinja_env.filters['highlight_label'] = highlight_label
+    app.jinja_env.filters['role_label'] = role_label
     app.jinja_env.globals['page_sizes'] = ALLOWED_PAGE_SIZES
 
     # Injeção de dependência via Factory.
@@ -85,6 +96,7 @@ def create_app(test_config=None):
     app.member_service_factory = member_service_factory
     app.category_service_factory = category_service_factory
     app.dashboard_service_factory = dashboard_service_factory
+    app.user_service_factory = user_service_factory
 
     # Registro das Rotas (Blueprints)
     from interface.web.routes.dashboard_routes import bp as dashboard_bp
@@ -102,9 +114,15 @@ def create_app(test_config=None):
     from interface.web.routes.category_routes import bp as category_bp
     app.register_blueprint(category_bp, url_prefix='/category')
 
+    from interface.web.routes.user_routes import bp as user_bp
+    app.register_blueprint(user_bp, url_prefix='/user')
+
     # Comandos de linha de comando (flask <comando>)
     from interface.cli.category_commands import register_category_commands
     register_category_commands(app)
+
+    from interface.cli.user_commands import register_user_commands
+    register_user_commands(app)
 
     return app
 
