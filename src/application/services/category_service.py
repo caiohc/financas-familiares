@@ -1,5 +1,5 @@
 import uuid
-from typing import List
+from typing import List, Optional
 
 from application.dtos.financial_dtos import (
     CategoryResponseDTO,
@@ -7,7 +7,8 @@ from application.dtos.financial_dtos import (
     SeedResultDTO,
     UpdateCategoryDTO,
 )
-from application.dtos.shared_dtos import DeletionPreviewDTO
+from application.dtos.shared_dtos import DEFAULT_PAGE_SIZE, DeletionPreviewDTO, PageDTO
+from application.services.pagination import build_page
 from application.interfaces.unit_of_work import AbstractUnitOfWork
 from domain.financial.entities import Category
 from domain.financial.exceptions import category_already_exists, category_has_dependencies, category_not_found
@@ -45,6 +46,16 @@ class CategoryService:
         with self.uow:
             categories = sorted(self.uow.categories.list_all(), key=lambda c: (c.type.value, c.name.lower()))
             return [self._to_dto(c) for c in categories]
+
+    def list_categories_page(
+        self, page: Optional[int] = 1, page_size: Optional[int] = DEFAULT_PAGE_SIZE,
+        sort_by: Optional[str] = None, sort_dir: Optional[str] = None,
+        search: Optional[str] = None,
+    ) -> PageDTO[CategoryResponseDTO]:
+        with self.uow:
+            return build_page(
+                self.uow.categories.list_page, self._to_dto, page, page_size, sort_by, sort_dir, ("name", "type"), search,
+            )
 
     def update_category(self, category_id: uuid.UUID, dto: UpdateCategoryDTO) -> CategoryResponseDTO:
         with self.uow:

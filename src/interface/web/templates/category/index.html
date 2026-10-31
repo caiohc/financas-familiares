@@ -1,29 +1,33 @@
 {% extends "base.html" %}
 {% import "_icons.html" as icons %}
+{% import "_pagination.html" as pager %}
 
 {% block title %}Categorias{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <h1>Categorias</h1>
-    <a href="{{ url_for('category.new') }}" class="btn btn-success">+ Nova categoria</a>
 </div>
+
+{% call pager.search_bar(pagination, 'category.list_categories', 'nome ou tipo') %}
+<a href="{{ url_for('category.new') }}" class="btn btn-success">+ Nova categoria</a>
+{% endcall %}
 
 <div class="card card-flush">
     <table class="data-table">
         <thead>
             <tr>
-                <th>Nome</th>
-                <th>Tipo</th>
+                {{ pager.sortable_th(pagination, 'category.list_categories', 'name', 'Nome') }}
+                {{ pager.sortable_th(pagination, 'category.list_categories', 'type', 'Tipo') }}
                 <th class="col-actions">Ações</th>
             </tr>
         </thead>
         <tbody>
             {% for c in categories %}
             <tr>
-                <td class="cell-strong">{{ c.name }}</td>
+                <td class="cell-strong">{{ c.name|highlight(pagination.search) }}</td>
                 <td>
-                    <span class="badge badge-{{ c.type.value | lower }}">{{ type_labels.get(c.type, c.type.value) }}</span>
+                    <span class="badge badge-{{ c.type.value | lower }}">{{ type_labels.get(c.type, c.type.value)|highlight(pagination.search) }}</span>
                 </td>
                 <td>
                     <div class="row-actions">
@@ -34,10 +38,11 @@
             </tr>
             {% else %}
             <tr>
-                <td colspan="3" class="empty-state">Nenhuma categoria cadastrada ainda.</td>
+                <td colspan="3" class="empty-state">{% if pagination.search %}Nenhum resultado para "{{ pagination.search }}".{% else %}Nenhuma categoria cadastrada ainda.{% endif %}</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+    {{ pager.controls(pagination, 'category.list_categories') }}
 </div>
 {% endblock %}

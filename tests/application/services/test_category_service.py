@@ -184,3 +184,50 @@ def test_preview_category_deletion_not_found(service):
 
     with pytest.raises(EntityNotFoundError):
         service.preview_category_deletion(uuid.uuid4())
+
+
+# --- Paginação, ordenação e pesquisa ---
+
+def _seed(uow: FakeUnitOfWork):
+    for name, type_ in (("Lazer", EXPENSE), ("Salário", INCOME), ("Alimentação", EXPENSE)):
+        uow.categories.save(Category(name=name, type=type_))
+
+def test_list_categories_page_defaults_to_name_ascending(service: CategoryService, uow: FakeUnitOfWork):
+    _seed(uow)
+
+    page = service.list_categories_page()
+
+    assert [c.name for c in page.items] == ["Alimentação", "Lazer", "Salário"]
+    assert (page.page, page.total, page.sort_by, page.sort_dir) == (1, 3, "name", "asc")
+
+def test_list_categories_page_sorts_by_type_descending(service: CategoryService, uow: FakeUnitOfWork):
+    _seed(uow)
+
+    page = service.list_categories_page(sort_by="type", sort_dir="desc")
+
+    assert [c.name for c in page.items] == ["Salário", "Alimentação", "Lazer"]
+    assert (page.sort_by, page.sort_dir) == ("type", "desc")
+
+def test_list_categories_page_falls_back_to_name_for_an_unsortable_field(service: CategoryService, uow: FakeUnitOfWork):
+    _seed(uow)
+
+    assert service.list_categories_page(sort_by="id").sort_by == "name"
+
+def test_list_categories_page_searches_by_name_or_type_label(service: CategoryService, uow: FakeUnitOfWork):
+    _seed(uow)
+
+    by_name = service.list_categories_page(search="  aliment ")
+    by_type = service.list_categories_page(search="receita")
+
+    assert [c.name for c in by_name.items] == ["Alimentação"]
+    assert by_name.search == "aliment"
+    assert [c.name for c in by_type.items] == ["Salário"]
+    assert by_type.total == 1
+
+def test_list_categories_page_beyond_the_last_page_returns_the_last(service: CategoryService, uow: FakeUnitOfWork):
+    _seed(uow)
+
+    page = service.list_categories_page(page=9, page_size=10)
+
+    assert page.page == 1
+    assert len(page.items) == 3

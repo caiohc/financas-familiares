@@ -1,7 +1,7 @@
 from flask import Blueprint, request, redirect, render_template, url_for, current_app, flash, abort
 from application.dtos.financial_dtos import CreateCategoryDTO, UpdateCategoryDTO
 from application.services.category_service import CategoryService
-from domain.financial.entities import TransactionType
+from domain.financial.entities import CATEGORY_TYPE_LABELS, TransactionType
 from domain.shared.exceptions import (
     DomainValidationError,
     EntityAlreadyExistsError,
@@ -11,9 +11,7 @@ from domain.shared.exceptions import (
 
 bp = Blueprint('category', __name__)
 
-# Tipos oferecidos na interface. TRANSFER_IN/OUT existem no domínio, mas não
-# fazem sentido como categoria escolhida pelo usuário.
-TYPE_LABELS = {TransactionType.EXPENSE: "Despesa", TransactionType.INCOME: "Receita"}
+TYPE_LABELS = CATEGORY_TYPE_LABELS
 
 def get_category_service() -> CategoryService:
     """Resolve a dependência do Serviço de Categoria através da factory registrada no app."""
@@ -124,5 +122,13 @@ def delete(category_id):
 
 @bp.route('/list', methods=['GET'])
 def list_categories():
-    categories = get_category_service().list_categories()
-    return render_template('category/index.html', categories=categories, type_labels=TYPE_LABELS)
+    result = get_category_service().list_categories_page(
+        page=request.args.get('page', type=int),
+        page_size=request.args.get('per_page', type=int),
+        sort_by=request.args.get('sort'),
+        sort_dir=request.args.get('dir'),
+        search=request.args.get('q'),
+    )
+    return render_template(
+        'category/index.html', categories=result.items, pagination=result, type_labels=TYPE_LABELS,
+    )

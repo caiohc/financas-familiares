@@ -12,6 +12,7 @@ from enum import Enum
 from typing import Optional
 
 from domain.shared.exceptions import DomainValidationError
+from domain.shared.text import fold_text
 
 
 class TransactionType(Enum):
@@ -201,6 +202,11 @@ class CreditCardBill:
         )
 
 
+# Tipos que uma categoria pode ter e seus rótulos. TRANSFER_IN/OUT existem no
+# domínio, mas não fazem sentido como categoria escolhida pelo usuário.
+CATEGORY_TYPE_LABELS = {TransactionType.EXPENSE: "Despesa", TransactionType.INCOME: "Receita"}
+
+
 @dataclass(kw_only=True)
 class Category:
     """Categoria para organização do orçamento.
@@ -220,6 +226,12 @@ class Category:
         if not isinstance(type_, TransactionType):
             raise DomainValidationError("type", "Tipo da categoria é obrigatório.")
         return type_
+
+    @staticmethod
+    def types_matching(term: str) -> list[TransactionType]:
+        """Tipos de categoria cujo rótulo (o que a pessoa vê) contém o trecho, sem caixa e sem acentos."""
+        needle = fold_text(term)
+        return [t for t, label in CATEGORY_TYPE_LABELS.items() if needle in fold_text(label)]
 
     def __post_init__(self):
         self.name = self.normalize_name(self.name)

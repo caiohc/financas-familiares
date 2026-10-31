@@ -11,6 +11,7 @@ from domain.financial.entities import (
     CreditCardBill,
     Transaction,
 )
+from domain.shared.pagination import Page
 
 
 class CategoryRepository(ABC):
@@ -30,6 +31,18 @@ class CategoryRepository(ABC):
 
     @abstractmethod
     def list_all(self) -> list[Category]:
+        pass
+
+    @abstractmethod
+    def list_page(
+        self, page: int, page_size: int, sort_by: str = "name", descending: bool = False,
+        search: Optional[str] = None,
+    ) -> Page[Category]:
+        """Fatia (página 1-based) com o total geral, ordenada por "name" ou "type" sem diferenciar maiúsculas; empates por nome e id.
+
+        `search` filtra por trecho do nome ou do rótulo do tipo, sem diferenciar caixa nem acentos;
+        o total e a paginação valem sobre o resultado filtrado.
+        """
         pass
 
     @abstractmethod

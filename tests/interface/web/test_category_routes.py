@@ -1,6 +1,8 @@
 import uuid
 from html import unescape
 
+from fakes.pagination import page_of
+
 from application.dtos.financial_dtos import CategoryResponseDTO, CreateCategoryDTO, UpdateCategoryDTO
 from domain.financial.entities import TransactionType
 from domain.financial.exceptions import category_already_exists, category_has_dependencies, category_not_found
@@ -15,7 +17,7 @@ def _category(name: str, type_: TransactionType = EXPENSE) -> CategoryResponseDT
 # --- Listagem ---
 
 def test_list_categories_shows_names_and_type_labels(client, category_service):
-    category_service.list_categories.return_value = [_category("Lazer", EXPENSE), _category("Salário", INCOME)]
+    category_service.list_categories_page.return_value = page_of([_category("Lazer", EXPENSE), _category("Salário", INCOME)])
 
     response = client.get("/category/list")
 
@@ -26,7 +28,7 @@ def test_list_categories_shows_names_and_type_labels(client, category_service):
 
 def test_list_categories_rows_are_wired_to_edit_and_confirm_delete(client, category_service):
     category = _category("Lazer")
-    category_service.list_categories.return_value = [category]
+    category_service.list_categories_page.return_value = page_of([category])
 
     html = client.get("/category/list").get_data(as_text=True)
 
@@ -61,7 +63,7 @@ def test_create_category_with_unknown_type_passes_none_to_the_domain(client, cat
     category_service.create_category.assert_called_once_with(CreateCategoryDTO(name="Lazer", type=None))
 
 def test_create_category_flashes_success_message(client, category_service):
-    category_service.list_categories.return_value = []
+    category_service.list_categories_page.return_value = page_of([])
 
     response = client.post("/category/create", data={"name": "Lazer", "type": "EXPENSE"}, follow_redirects=True)
 
@@ -120,7 +122,7 @@ def test_update_category_calls_service_and_redirects_to_list(client, category_se
     category_service.update_category.assert_called_once_with(category_id, UpdateCategoryDTO(name="Vendas", type=INCOME))
 
 def test_update_category_flashes_success_message(client, category_service):
-    category_service.list_categories.return_value = []
+    category_service.list_categories_page.return_value = page_of([])
 
     response = client.post(
         f"/category/update/{uuid.uuid4()}", data={"name": "Vendas", "type": "INCOME"}, follow_redirects=True
@@ -193,7 +195,7 @@ def test_delete_category_calls_service_and_redirects_to_list(client, category_se
     category_service.delete_category.assert_called_once_with(category_id)
 
 def test_delete_category_flashes_success_message(client, category_service):
-    category_service.list_categories.return_value = []
+    category_service.list_categories_page.return_value = page_of([])
 
     response = client.post(f"/category/delete/{uuid.uuid4()}", follow_redirects=True)
 
@@ -202,7 +204,7 @@ def test_delete_category_flashes_success_message(client, category_service):
 def test_delete_category_with_dependencies_flashes_error_and_redirects(client, category_service):
     category_id = uuid.uuid4()
     category_service.delete_category.side_effect = category_has_dependencies(category_id)
-    category_service.list_categories.return_value = []
+    category_service.list_categories_page.return_value = page_of([])
 
     response = client.post(f"/category/delete/{category_id}", follow_redirects=True)
 
@@ -213,3 +215,32 @@ def test_delete_nonexistent_category_returns_404(client, category_service):
     category_service.delete_category.side_effect = category_not_found(category_id)
 
     assert client.post(f"/category/delete/{category_id}").status_code == 404
+
+# --- Paginação, ordenação e pesquisa na listagem ---
+
+def test_list_categories_forwards_query_parameters_to_the_service(client, category_service):
+    category_service.list_categories_page.return_value = page_of([])
+
+    client.get("/category/list?page=2&per_page=25&sort=type&dir=desc&q=desp")
+
+    category_service.list_categories_page.assert_called_once_with(
+        page=2, page_size=25, sort_by="type", sort_dir="desc", search="desp",
+    )
+
+def test_list_categories_has_search_box_and_sortable_headers(client, category_service):
+    category_service.list_categories_page.return_value = page_of([_category("Lazer")])
+
+    html = client.get("/category/list").get_data(as_text=True)
+
+    assert 'name="q"' in html
+    assert "sort=name" in html
+    assert "sort=type" in html
+
+def test_list_categories_highlights_the_search_term_and_shows_empty_result(client, category_service):
+    category_service.list_categories_page.return_value = page_of([_category("Lazer")], search="laz")
+    highlighted = client.get("/category/list?q=laz").get_data(as_text=True)
+    category_service.list_categories_page.return_value = page_of([], search="xyz")
+    empty = client.get("/category/list?q=xyz").get_data(as_text=True)
+
+    assert "<mark>Laz</mark>er" in highlighted
+    assert 'Nenhum resultado para "xyz".' in empty
