@@ -40,6 +40,8 @@ def _create_dto(**overrides) -> CreateUserDTO:
         role=Role.SYSTEM_ADMIN, family_id=None, name="Caio", username="caio", email="caio@example.com",
         temporary_password="senha-temporaria",
     )
+    # Por padrão a confirmação repete a senha, a menos que o teste a altere.
+    data["temporary_password_confirmation"] = overrides.get("temporary_password", data["temporary_password"])
     data.update(overrides)
     return CreateUserDTO(**data)
 
@@ -127,6 +129,32 @@ def test_create_user_with_invalid_input_raises_and_saves_nothing(service, uow, o
 
     assert uow.users.users == {}
     assert uow.committed is False
+
+
+@pytest.mark.parametrize("confirmation", ["outra-senha-123", "Senha-Temporaria", "senha-temporaria ", "", None])
+def test_create_user_with_mismatching_password_confirmation_raises_and_saves_nothing(
+    service: UserService, uow: FakeUnitOfWork, confirmation
+):
+    with pytest.raises(DomainValidationError, match="senhas informadas não conferem") as exc:
+        service.create_user(_create_dto(temporary_password_confirmation=confirmation))
+
+    assert exc.value.field == "password_confirmation"
+    assert uow.users.users == {}
+    assert uow.committed is False
+
+
+def test_create_user_with_matching_confirmation_hashes_the_password(service: UserService, uow: FakeUnitOfWork):
+    response = service.create_user(_create_dto(
+        temporary_password="  senha com espaços", temporary_password_confirmation="  senha com espaços",
+    ))
+
+    # A senha não é aparada antes do hash (espaços iniciais fazem parte dela).
+    assert uow.users.get_by_id(response.id).password_hash == FakePasswordHasher().hash("  senha com espaços")
+
+
+def test_password_policy_is_checked_before_the_confirmation(service: UserService):
+    with pytest.raises(DomainValidationError, match="pelo menos 8 caracteres"):
+        service.create_user(_create_dto(temporary_password="curta", temporary_password_confirmation="outra"))
 
 
 def test_create_user_with_duplicate_username_ignoring_case_raises(service: UserService, uow: FakeUnitOfWork):

@@ -101,6 +101,12 @@ class User:
         return password
 
     @staticmethod
+    def validate_password_confirmation(password: str, confirmation: Optional[str]) -> None:
+        """A senha digitada duas vezes precisa ser idêntica (comparação exata, sem ignorar espaços ou caixa)."""
+        if confirmation != password:
+            raise DomainValidationError("password_confirmation", "As senhas informadas não conferem.")
+
+    @staticmethod
     def validate_password_hash(password_hash: Optional[str]) -> str:
         return _required(password_hash, "password", "Senha é obrigatória.")
 

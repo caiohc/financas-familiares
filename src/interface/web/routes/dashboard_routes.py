@@ -16,6 +16,7 @@ def index():
         ("Famílias", counts.families, url_for('family.list_families')),
         ("Centros de custo", counts.cost_centers, url_for('family_cost_center.list_cost_centers')),
         ("Membros", counts.members, url_for('member.list_members')),
+        ("Usuários", counts.users, url_for('user.list_users')),
         ("Categorias", counts.categories, url_for('category.list_categories')),
     ]
     return render_template('home.html', entities=entities)

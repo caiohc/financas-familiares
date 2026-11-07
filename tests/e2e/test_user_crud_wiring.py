@@ -29,6 +29,17 @@ def client(app):
     return app.test_client()
 
 
+def test_user_creation_rejects_a_mismatching_password_confirmation_through_the_real_stack(client):
+    response = client.post("/user/create", data={
+        "role": "SYSTEM_ADMIN", "name": "Caio", "username": "caio", "email": "caio@example.com",
+        "temporary_password": "senha-temporaria", "temporary_password_confirmation": "senha-diferente",
+    })
+
+    assert response.status_code == 400
+    assert "As senhas informadas não conferem." in response.get_data(as_text=True)
+    assert "caio@example.com" not in client.get("/user/list").get_data(as_text=True)
+
+
 def test_user_wiring_through_the_real_stack(app, client):
     family_page = client.post("/family/create", data={"name": "Família Wiring"}, follow_redirects=True)
     family_id = re.search(r"/family/edit/([0-9a-f-]{36})", family_page.get_data(as_text=True)).group(1)
@@ -36,6 +47,7 @@ def test_user_wiring_through_the_real_stack(app, client):
     create_response = client.post("/user/create", data={
         "role": "FAMILY_ADMIN", "family_id": family_id, "name": "Maria Souza", "username": "maria",
         "email": "maria@example.com", "temporary_password": "senha-temporaria",
+        "temporary_password_confirmation": "senha-temporaria",
     }, follow_redirects=True)
     assert create_response.status_code == 200
     assert "cadastrado com sucesso" in create_response.get_data(as_text=True)

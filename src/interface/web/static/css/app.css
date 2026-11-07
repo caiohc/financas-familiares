@@ -610,6 +610,46 @@ body.sidebar-is-collapsed .nav-soon span {
     color: var(--accent-glow);
 }
 
+/* Campo de senha com o botão de mostrar/ocultar (olho) dentro, à direita */
+.password-field {
+    position: relative;
+}
+
+.password-field .form-control {
+    padding-right: 3.25rem;
+}
+
+.password-toggle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 3.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    border-radius: 0 8px 8px 0;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.password-toggle:hover,
+.password-toggle:focus-visible {
+    color: var(--accent-glow);
+}
+
+/* Senha oculta: olho aberto (clicar mostra). Senha visível: olho riscado (clicar oculta). */
+.password-toggle .icon-eye-off,
+.password-toggle[aria-pressed="true"] .icon-eye {
+    display: none;
+}
+
+.password-toggle[aria-pressed="true"] .icon-eye-off {
+    display: inline-block;
+}
+
 .search-summary {
     margin-bottom: 0.75rem;
     color: var(--text-secondary);

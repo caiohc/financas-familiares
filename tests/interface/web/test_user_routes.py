@@ -29,7 +29,7 @@ def _user(name="João da Silva", family_id=None, role=Role.FAMILY_USER, username
 
 
 FORM = {"role": "FAMILY_USER", "name": "João", "username": "joao", "email": "joao@example.com",
-        "temporary_password": "senha-temporaria"}
+        "temporary_password": "senha-temporaria", "temporary_password_confirmation": "senha-temporaria"}
 
 
 # --- Listagem ---
@@ -137,6 +137,7 @@ def test_new_user_form_offers_roles_families_and_a_password_field(client, family
     assert 'value="ROOT"' not in html
     assert f'value="{family_a.id}"' in html and f'value="{family_b.id}"' in html
     assert re.search(r'<input[^>]*type="password"[^>]*name="temporary_password"', html)
+    assert re.search(r'<input[^>]*type="password"[^>]*name="temporary_password_confirmation"', html)
     for field in ("name", "username", "email"):
         assert f'name="{field}"' in html
 
@@ -158,7 +159,7 @@ def test_create_user_calls_service_and_redirects_to_list(client, user_service):
     assert response.headers["Location"] == "/user/list"
     user_service.create_user.assert_called_once_with(CreateUserDTO(
         role=Role.FAMILY_USER, family_id=family_id, name="João", username="joao", email="joao@example.com",
-        temporary_password="senha-temporaria",
+        temporary_password="senha-temporaria", temporary_password_confirmation="senha-temporaria",
     ))
 
 
@@ -227,6 +228,33 @@ def test_create_user_without_role_leaves_the_decision_to_the_domain(client, user
     assert response.status_code == 400
     assert user_service.create_user.call_args.args[0].role is None
     assert "Papel do usuário é obrigatório." in unescape(response.get_data(as_text=True))
+
+
+def test_create_user_with_mismatching_confirmation_re_presents_form_without_echoing_passwords(
+    client, user_service, family_service
+):
+    family_service.list_families.return_value = []
+    user_service.create_user.side_effect = DomainValidationError(
+        "password_confirmation", "As senhas informadas não conferem."
+    )
+
+    response = client.post("/user/create", data={**FORM, "temporary_password_confirmation": "outra-senha-123"})
+
+    assert response.status_code == 400
+    html = unescape(response.get_data(as_text=True))
+    assert "As senhas informadas não conferem." in html
+    assert 'value="joao"' in html
+    assert "senha-temporaria" not in html and "outra-senha-123" not in html
+    assert user_service.create_user.call_args.args[0].temporary_password_confirmation == "outra-senha-123"
+
+
+def test_create_user_without_confirmation_field_sends_none_to_the_service(client, user_service):
+    data = {k: v for k, v in FORM.items() if k != "temporary_password_confirmation"}
+    data["family_id"] = str(uuid.uuid4())
+
+    client.post("/user/create", data=data)
+
+    assert user_service.create_user.call_args.args[0].temporary_password_confirmation is None
 
 
 def test_create_user_with_unknown_role_returns_400_without_calling_the_service(client, user_service):

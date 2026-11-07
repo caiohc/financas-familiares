@@ -85,6 +85,7 @@ class UserService:
             email = User.normalize_email(dto.email)
             name = User.normalize_name(dto.name, role)
             password = User.validate_raw_password(dto.temporary_password)
+            User.validate_password_confirmation(password, dto.temporary_password_confirmation)
 
             if self.uow.users.get_by_username(username):
                 raise username_already_exists(username)

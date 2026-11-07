@@ -35,6 +35,10 @@ class UserRepository(ABC):
         pass
 
     @abstractmethod
+    def list_all(self) -> list[User]:
+        pass
+
+    @abstractmethod
     def list_page(
         self, page: int, page_size: int, sort_by: str = "name", descending: bool = False,
         search: Optional[str] = None,

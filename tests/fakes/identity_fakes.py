@@ -32,6 +32,9 @@ class FakeUserRepository(UserRepository):
     def exists_with_role(self, role: Role) -> bool:
         return any(u.role is role for u in self.users.values())
 
+    def list_all(self) -> list[User]:
+        return list(self.users.values())
+
     def list_page(self, page: int, page_size: int, sort_by: str = "name", descending: bool = False,
                   search=None) -> Page:
         if sort_by not in ("name", "username", "email"):

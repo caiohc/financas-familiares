@@ -142,3 +142,12 @@ def test_duplicate_email_raises_domain_error(committed_family_id):
         repo.save(_family_user(family_id, username="b", email="joao@example.com"))
 
     assert exc.value.field == "email"
+
+
+def test_list_all_returns_users_of_every_level(repo, family_id):
+    assert repo.list_all() == []
+
+    repo.save(_admin())
+    repo.save(_family_user(family_id))
+
+    assert {u.username for u in repo.list_all()} == {"admin", "joao"}

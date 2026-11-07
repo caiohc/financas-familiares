@@ -176,3 +176,16 @@ def test_password_change_rejects_blank_hash_and_keeps_state(method):
     with pytest.raises(DomainValidationError):
         getattr(user, method)("  ")
     assert (user.password_hash, user.must_change_password) == ("hash", False)
+
+
+# --- Confirmação da senha ---
+
+def test_password_confirmation_accepts_identical_passwords():
+    User.validate_password_confirmation("senha-temporaria", "senha-temporaria")
+
+
+@pytest.mark.parametrize("confirmation", ["Senha-Temporaria", "senha-temporaria ", "", None])
+def test_password_confirmation_rejects_any_difference(confirmation):
+    with pytest.raises(DomainValidationError, match="senhas informadas não conferem") as exc:
+        User.validate_password_confirmation("senha-temporaria", confirmation)
+    assert exc.value.field == "password_confirmation"

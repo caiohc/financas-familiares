@@ -2,8 +2,10 @@ import re
 
 from application.dtos.dashboard_dtos import EntityCountsDTO
 
-def _counts(families=2, members=3, cost_centers=1, categories=16) -> EntityCountsDTO:
-    return EntityCountsDTO(families=families, members=members, cost_centers=cost_centers, categories=categories)
+def _counts(families=2, members=3, users=5, cost_centers=1, categories=16) -> EntityCountsDTO:
+    return EntityCountsDTO(
+        families=families, members=members, users=users, cost_centers=cost_centers, categories=categories
+    )
 
 def _row(html: str, href: str) -> str:
     """Trecho da linha da tabela que contém o link informado."""
@@ -20,13 +22,14 @@ def test_dashboard_is_the_application_index(client, dashboard_service):
     dashboard_service.get_entity_counts.assert_called_once_with()
 
 def test_each_label_links_to_its_listing_and_shows_its_count(client, dashboard_service):
-    dashboard_service.get_entity_counts.return_value = _counts(families=2, members=3, cost_centers=1, categories=16)
+    dashboard_service.get_entity_counts.return_value = _counts(families=2, members=3, users=5, cost_centers=1, categories=16)
 
     html = client.get("/").get_data(as_text=True)
 
     expected = {
         "/family/list": ("Famílias", "2"),
         "/member/list": ("Membros", "3"),
+        "/user/list": ("Usuários", "5"),
         "/cost-center/list": ("Centros de custo", "1"),
         "/category/list": ("Categorias", "16"),
     }

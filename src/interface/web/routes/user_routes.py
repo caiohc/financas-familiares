@@ -84,6 +84,7 @@ def create():
         username=form["username"],
         email=form["email"],
         temporary_password=request.form.get("temporary_password"),
+        temporary_password_confirmation=request.form.get("temporary_password_confirmation"),
     )
 
     try:

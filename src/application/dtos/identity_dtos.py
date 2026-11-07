@@ -21,6 +21,7 @@ class CreateUserDTO:
     username: str
     email: str
     temporary_password: str
+    temporary_password_confirmation: Optional[str]
 
 
 @dataclass(kw_only=True)

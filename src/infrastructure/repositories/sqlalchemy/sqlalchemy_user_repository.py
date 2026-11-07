@@ -81,6 +81,9 @@ class SQLAlchemyUserRepository(UserRepository):
     def exists_with_role(self, role: Role) -> bool:
         return self.session.query(UserModel.id).filter(UserModel.role == role).first() is not None
 
+    def list_all(self) -> list[User]:
+        return [self._to_domain(m) for m in self.session.query(UserModel).all()]
+
     def list_page(
         self, page: int, page_size: int, sort_by: str = "name", descending: bool = False,
         search: Optional[str] = None,

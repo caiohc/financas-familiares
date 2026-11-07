@@ -16,6 +16,7 @@ class DashboardService:
             return EntityCountsDTO(
                 families=len(self.uow.families.list_all()),
                 members=len(self.uow.members.list_all()),
+                users=len(self.uow.users.list_all()),
                 cost_centers=len(self.uow.family_cost_centers.list_all()),
                 categories=len(self.uow.categories.list_all()),
             )
