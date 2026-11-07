@@ -15,9 +15,13 @@ Esta documentação descreve como o sistema protege o acesso e as contas das pes
 
 - **Parte II (Seções 6 a 18), para quem desenvolve** (pessoa ou IA). Explica os mecanismos de segurança adotados, o que já está implementado e o que ainda está planejado.
 
-> **Atenção ao estado de implementação.** A Parte I descreve o comportamento do sistema com a funcionalidade de autenticação concluída. Hoje parte dela ainda não existe; a Seção 6.2 diz exatamente o que já está pronto. Não entregue uma seção a um usuário antes de a funcionalidade que ela descreve estar disponível.
+> **Atenção ao estado de implementação.** A Parte I descreve o sistema com a funcionalidade de autenticação
+> concluída. O que já está pronto no código, e o que ainda não, está na Seção 6.2. Em particular, o **envio real de
+> e-mail (SMTP) ainda não existe**: em desenvolvimento a mensagem vai para o log do servidor, e em produção a
+> aplicação ainda não sobe. Não entregue uma seção a um usuário antes de a funcionalidade que ela descreve estar
+> disponível.
 
-Última atualização: 07/11/2026.
+Última atualização: 08/11/2026.
 
 ---
 
@@ -82,19 +86,27 @@ Só com as duas a ativação funciona. Quem tiver acesso apenas ao e-mail, ou ap
 
 Se algo der errado:
 
-- **O link venceu.** Ele tem validade limitada e só funciona uma vez. Peça ao administrador um novo link; ele também gera um novo código.
-- **Errou o código várias vezes.** Por segurança, o código é bloqueado depois de algumas tentativas erradas. Peça um novo ao administrador.
-- **Não recebeu o e-mail.** Confira a caixa de spam e confirme com o administrador se o endereço está correto. Enquanto a conta não for ativada, ele pode corrigir o e-mail e reenviar o convite.
+- **O link venceu.** Ele vale por **24 horas** e só funciona uma vez. Peça ao administrador um novo link; ele também
+  gera um novo código, e o convite anterior deixa de valer.
+- **Errou o código várias vezes.** Depois de **5 códigos errados** o convite é bloqueado, mesmo que você acerte em
+  seguida. Peça um novo ao administrador.
+- **Não recebeu o e-mail.** Confira a caixa de spam e confirme com o administrador se o endereço está correto. Enquanto
+  a conta não for ativada, ele pode corrigir o e-mail e reenviar o convite.
 
 ### 2.2 Entrar no sistema
 
-Informe o **nome de usuário ou o e-mail** e a senha. Se algo estiver errado, o sistema diz apenas **"Usuário ou senha inválidos"**, sem informar qual dos dois falhou. Isso é proposital: protege contas de quem tenta descobrir quem usa o sistema.
+Informe o **nome de usuário ou o e-mail** e a senha. Se algo estiver errado, o sistema diz apenas **"Usuário ou senha
+inválidos"**, sem informar qual dos dois falhou (nem se a conta existe, está pendente ou foi desativada). Isso é
+proposital: protege contas de quem tenta descobrir quem usa o sistema.
 
-Depois de várias tentativas erradas em sequência, o sistema faz você **esperar um pouco** antes de tentar de novo. Também é proposital.
+Depois de **5 tentativas erradas em um minuto** para a mesma conta, o sistema faz você **esperar um pouco** antes de
+tentar de novo, mesmo que você acerte a senha na tentativa seguinte. Também é proposital.
 
 ### 2.3 Sair do sistema
 
-Use o botão **Sair** quando terminar, principalmente em computador ou celular compartilhado. Por segurança, o acesso também **expira sozinho** depois de um tempo sem uso, e você precisará entrar de novo.
+Use o botão **Sair** quando terminar, principalmente em computador ou celular compartilhado. Por segurança, o acesso
+também **expira sozinho**: depois de **30 minutos sem uso**, e no máximo **8 horas** depois de você entrar, mesmo que
+você continue usando. Quando isso acontece, é só entrar de novo.
 
 ### 2.4 Trocar a sua senha
 
@@ -102,12 +114,22 @@ Em qualquer momento você pode trocar a senha informando a **senha atual**, a **
 
 ### 2.5 Esqueci minha senha
 
-1. Na tela de entrada, escolha **"Esqueci minha senha"** e informe o seu e-mail.
-2. A resposta é sempre a mesma, exista ou não uma conta com esse e-mail: *"Se o e-mail estiver cadastrado, enviamos as instruções."*
-3. Se existir uma conta ativa, você recebe um **link de uso único e de validade curta**. Abra-o e escolha uma nova senha (duas vezes).
-4. Você recebe um **aviso por e-mail** de que a senha foi alterada. Se não foi você, avise o administrador imediatamente.
+Disponível para **usuários de família e administradores de família que já ativaram a conta**. Quem já entrou uma vez
+redefine a própria senha sozinho, sem depender de ninguém.
 
-A recuperação só funciona para contas **já ativadas**.
+1. Na tela de entrada, escolha **"Esqueci minha senha"** e informe o seu e-mail.
+2. A resposta é sempre a mesma, exista ou não uma conta com esse e-mail: *"Se o e-mail estiver cadastrado, enviamos as
+   instruções."*
+3. Se existir uma conta ativa, você recebe um **link de uso único que vale por 15 minutos**. Abra-o e escolha uma nova
+   senha (duas vezes). Não há código nesse caso: o e-mail é a prova.
+4. Você recebe um **aviso por e-mail** de que a senha foi alterada. Se não foi você, avise o administrador
+   imediatamente.
+
+Pedir o link muitas vezes seguidas é limitado (no máximo 3 por hora para o mesmo e-mail). Um pedido novo invalida o
+link anterior.
+
+**Administradores do sistema não usam esta opção**: a senha deles é redefinida por outro administrador do sistema
+(Seção 4.3), com link e código. A recuperação só funciona para contas **já ativadas**.
 
 ### 2.6 O seu e-mail
 
@@ -155,9 +177,11 @@ Para um usuário que ainda não ativou a conta, você pode:
 - **Reenviar a ativação:** gera um novo link e um novo código, e o convite anterior deixa de valer.
 - **Corrigir o e-mail**, caso tenha sido digitado errado. Isso reenvia o convite ao endereço correto.
 
-### 3.3 Redefinir a senha de um usuário da família
+### 3.3 Quem esqueceu a senha
 
-Se alguém da sua família esqueceu a senha e não consegue recuperá-la, você pode **redefinir** a senha dessa pessoa, **inclusive de outro administrador de família**. Para a sua própria senha, use **"Esqueci minha senha"** (Seção 2.5). Você **não escolhe nem vê** a nova senha: o sistema envia à pessoa um novo link e um novo código, no mesmo formato da ativação (Seção 3.1), e ela escolhe a senha. A senha antiga deixa de valer imediatamente e os acessos abertos são encerrados.
+Você **não redefine** a senha de quem já ativou a conta, nem a de outro administrador de família: cada pessoa redefine
+a própria em **"Esqueci minha senha"** (Seção 2.5), sem depender de você e sem que você precise conhecer ou escolher
+nada. Para quem ainda **não ativou** a conta, o caminho é reenviar o convite (Seção 3.2).
 
 ### 3.4 Desativar um usuário
 
@@ -165,9 +189,11 @@ Desative a conta de quem deixou a família ou não deve mais ter acesso. A pesso
 
 ### 3.5 O que você não pode fazer
 
-- Ver ou escolher a senha de alguém.
+- Ver ou escolher a senha de alguém, ou redefinir a senha de quem já ativou a conta.
 - Alterar o e-mail de quem **já ativou** a conta.
-- Cadastrar ou alterar administradores do sistema, o root, ou usuários de **outra** família.
+- Cadastrar ou alterar administradores do sistema, o root, ou usuários de **outra** família. Para você, usuários de
+  outras famílias simplesmente não existem.
+- Desativar ou excluir a sua própria conta.
 
 ### 3.6 Nenhuma ação sua é silenciosa
 
@@ -191,7 +217,16 @@ O cadastro segue o mesmo fluxo (e-mail em dois campos com confirmação, convite
 
 ### 4.3 Redefinir senhas e desativar contas
 
-Você pode redefinir a senha (Seção 3.3) e desativar (Seção 3.4) usuários de **qualquer** família. Pode também redefinir a senha de **outro administrador do sistema**, e ele a sua. Esse é um fluxo reservado a administradores do sistema (e ao root, Seção 5): administradores de família não o disparam para você. Para a sua própria senha, o caminho é **"Esqueci minha senha"** (Seção 2.5).
+- **Outro administrador do sistema:** você pode redefinir a senha dele, e ele a sua. A redefinição usa o mesmo
+  mecanismo da ativação: a senha atual deixa de valer na hora, a pessoa recebe um **link por e-mail** (24 horas) e você
+  recebe um **código** para repassar por outro meio. Só administradores do sistema (e o root, Seção 5) podem iniciar
+  esse fluxo para um administrador do sistema; administradores de família não.
+- **Usuários de família já ativados:** você **não** redefine a senha deles. Cada um usa "Esqueci minha senha"
+  (Seção 2.5). Para quem ainda não ativou a conta, reenvie o convite.
+- **A sua própria senha:** nenhum administrador do sistema inicia a redefinição para si mesmo; se esquecer a senha,
+  peça a outro administrador do sistema (ou ao root).
+- **Desativar:** você pode desativar (e reativar) usuários de **qualquer** família e outros administradores do
+  sistema, nunca a si mesmo nem o root.
 
 ### 4.4 O que você não pode fazer
 
@@ -228,7 +263,20 @@ No servidor, execute:
 uv run flask create-root
 ```
 
-O comando pede o **nome de usuário**, o **e-mail** e a **senha** (digitada duas vezes, sem aparecer na tela). A senha precisa ter pelo menos 8 caracteres. Se já existir um root, o comando se recusa a criar outro.
+O comando pede o **nome de usuário**, o **e-mail** e a **senha** (digitada duas vezes, sem aparecer na tela). A senha precisa ter pelo menos 8 caracteres.
+
+O root **não representa uma pessoa**: use para ele um e-mail só dele, **diferente do e-mail das contas pessoais** (nenhum e-mail pode repetir).
+
+> **Quem é root e também usa o sistema como pessoa** (caso de quem desenvolve e administra): use um **alias** do mesmo
+> provedor para o root. No Gmail, `nome+root@gmail.com` é, para o sistema, um endereço diferente (a unicidade continua
+> valendo) e, para o Gmail, a mesma caixa de entrada. Confirme que o seu provedor aceita o `+`.
+
+O comando avisa com clareza, em vermelho e dizendo o que fazer, quando algo impede a criação:
+
+- **Já existe um root.** O sistema permite um único root, então um segundo não pode ser criado. O aviso vem **antes** de
+  qualquer pergunta, não revela o nome nem o e-mail do root atual e indica os comandos de trocar a senha e o e-mail dele.
+- **O nome de usuário ou o e-mail já estão cadastrados**, sem dizer a qual conta pertencem (revelar isso exporia quem tem conta no sistema). Se você
+  digitou o valor, o comando pergunta de novo; se ele veio de uma opção da linha de comando, o comando termina.
 
 ### 5.3 Esqueci a senha do root
 
@@ -238,9 +286,21 @@ O root **não tem recuperação por e-mail**, de propósito: o e-mail do root é
 uv run flask reset-root-password
 ```
 
-Quem consegue executar o comando já tem acesso ao servidor e ao banco de dados, por isso esse é um canal confiável.
+Quem consegue executar o comando já tem acesso ao servidor e ao banco de dados, por isso esse é um canal confiável. Os
+acessos abertos do root são encerrados.
 
-### 5.4 Cuidados
+### 5.4 Trocar o e-mail do root
+
+Pela aplicação **ninguém** altera o e-mail do root (nem os administradores do sistema). Ele só muda no servidor:
+
+```bash
+uv run flask change-root-email
+```
+
+O comando mostra o e-mail atual, pede o novo e-mail **duas vezes** e recusa um endereço inválido, igual ao atual ou já
+cadastrado (sem dizer de quem). A senha e o acesso do root não mudam.
+
+### 5.5 Cuidados
 
 - Guarde a senha do root em local seguro, separado do uso diário.
 - O root **não pode ser excluído** pela aplicação.
@@ -270,25 +330,30 @@ Esta parte explica **por que e como** a segurança é construída. Ela separa co
 
 | Mecanismo | Estado |
 |---|---|
-| Papéis (`Role`) e invariantes de `User` no domínio | **Implementado** |
-| `CHECK` no banco para família/papel e nome obrigatório | **Implementado** |
+| Papéis (`Role`) e invariantes de `User`; `CHECK` no banco (família/papel, nome, ciclo de vida da conta) | **Implementado** |
 | Unicidade global de `username` e `email` (sem diferenciar caixa) | **Implementado** |
-| Hash de senha atrás de porta (`AbstractPasswordHasher`), com scrypt (Werkzeug) | **Implementado** |
-| Política mínima de senha (8 caracteres) e confirmação em dois campos no serviço | **Implementado** (hoje no cadastro; será movido para a ativação, Seção 9) |
-| Comando `flask create-root` | **Implementado** |
-| CRUD de usuário (sem edição de senha, papel ou família) | **Implementado** (sem proteção de rotas) |
-| `SECRET_KEY` obrigatória no startup | **Implementado** |
-| Defesas de camada: escape de HTML, SQL parametrizado, escape de `LIKE`, DTOs restritos | **Implementado** |
-| Cadastro sem senha, ativação por link e código | Planejado |
-| Login, logout e sessão (Flask-Login) | Planejado |
-| CSRF (Flask-WTF) e limite de tentativas (Flask-Limiter) | Planejado |
-| Argon2id no lugar do scrypt | Planejado |
-| Troca de senha, recuperação por e-mail, troca do próprio e-mail | Planejado |
-| Desativação de usuário (`is_active`) | Planejado |
-| `flask reset-root-password` | Planejado |
-| Variáveis `APP_ENV` e `AUTH_ENABLED` e usuário de desenvolvimento | Planejado |
-| Avisos por e-mail e registro de auditoria | Planejado |
-| **Autorização** (papéis e escopo por família nas operações) | **Fora do escopo desta versão** (Seção 17) |
+| Estados da conta: pendente, ativa, aguardando nova senha, desativada (`is_active`, `activated_at`) | **Implementado** |
+| Cadastro sem senha: convite com link por e-mail + código por outro canal; tabela `user_invitations` | **Implementado** |
+| Ativação (token + código, uso único, 24 h, 5 tentativas) e redefinição de administrador do sistema | **Implementado** |
+| Recuperação autônoma de senha (família: link de 15 min, sem código) | **Implementado** |
+| E-mail em dois campos no cadastro, com janela de confirmação | **Implementado** |
+| Login/logout (Flask-Login), sessão com impressão digital da senha, 30 min de inatividade e 8 h absolutas | **Implementado** |
+| Troca da própria senha (derruba as demais sessões e revoga links de recuperação pendentes) | **Implementado** |
+| Proteção de rotas "negar por padrão" + teste que percorre todas as rotas | **Implementado** |
+| CSRF (Flask-WTF) em todos os POST | **Implementado** |
+| Limite de tentativas (Flask-Limiter): login, recuperação, definição de senha, troca de senha | **Implementado** (em memória: ver 10.5) |
+| Argon2id atrás da porta de hash, com migração dos hashes antigos no login | **Implementado** |
+| Cabeçalhos de segurança (`X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Cache-Control: no-store`) | **Implementado** |
+| `APP_ENV`, `AUTH_ENABLED` e usuário de desenvolvimento; validação no startup; `APP_BASE_URL` | **Implementado** |
+| Comandos `flask create-root`, `flask reset-root-password` e `flask change-root-email` | **Implementado** |
+| Autorização das **contas** (quem cadastra, edita, convida, desativa, exclui; escopo por família) | **Implementado** |
+| Desativação e reativação de usuário | **Implementado** |
+| **Envio de e-mail por SMTP** (hoje só o envio para o log, em desenvolvimento) | **Pendente** (depende da escolha do provedor) |
+| Troca do **próprio** e-mail (senha atual, dois campos, confirmação no endereço novo) | Planejado |
+| Registro de auditoria e avisos por e-mail de ações administrativas | Planejado |
+| Cabeçalhos CSP e HSTS (Flask-Talisman) | Planejado |
+| Revogação de uma sessão copiada ao sair (ver 10.3) | Limitação conhecida |
+| **Autorização** das demais operações (membros, centros de custo, contas financeiras...) | **Fora do escopo desta versão** (Seção 17) |
 
 ### 6.3 Onde cada peça fica
 
@@ -321,35 +386,46 @@ As mesmas regras valem no banco como `CHECK` (`ck_users_role_family`, `ck_users_
 
 Índices únicos de expressão (`ix_users_username_lower`, `ix_users_email_lower`): `username` e `email` são únicos **globalmente** (não por família) e **sem diferenciar maiúsculas de minúsculas**. O repositório converte colisão em `EntityAlreadyExistsError`, descobrindo qual campo colidiu.
 
+**As mensagens de conflito não revelam de quem é o valor.** Nome de usuário ou e-mail repetido produz apenas "já está
+cadastrado no sistema", sem citar a conta que o usa (isso exporia quem tem acesso). Vale para o cadastro pela
+aplicação e para os três comandos de CLI. A senha nunca é conferida contra as de outras contas.
+
 > **Cuidado em migrações no SQLite.** O `batch_alter_table` recria a tabela e **perde índices de expressão em silêncio** (o SQLAlchemy não os reflete). Toda migração que altere `users` deve derrubar e recriar esses índices, como faz a `4b7c1e9a2d55`, e deve ser testada em `upgrade`, `downgrade` e `upgrade`.
 
 ### 7.3 Mass assignment
 
 `UpdateUserDTO` contém só `name`, `username` e `email`. Papel, família e senha **nunca** são alterados pelo CRUD de edição, e há teste garantindo que a rota ignora esses campos se vierem no POST.
 
-### 7.4 Estados da conta (planejado)
-
-Com o fluxo de ativação, o usuário passa a ter um ciclo de vida:
+### 7.4 Estados da conta (implementado)
 
 ```
-PENDENTE  --(ativação por link + código)-->  ATIVO  --(desativação)-->  DESATIVADO
-                                               ^                              |
-                                               +--------(reativação)---------+
+PENDENTE  --(ativação: link + código)-->  ATIVA  --(redefinição por administrador do sistema)-->  AGUARDANDO NOVA SENHA
+                                           ^                                                            |
+                                           +----------------(link + código)----------------------------+
+
+qualquer estágio  --(desativação)-->  DESATIVADA  --(reativação)-->  o estágio anterior
 ```
 
-- `PENDENTE`: criado sem senha; não autentica; e-mail ainda **não confiável**.
-- `ATIVO`: tem senha; autentica; e-mail confiável (a ativação provou o controle da caixa).
-- `DESATIVADO`: não autentica; sessões abertas caem na requisição seguinte; dados preservados.
+- `PENDENTE` (`password_hash` e `activated_at` nulos): criada sem senha; não autentica; o e-mail ainda **não é
+  confiável** e o administrador pode corrigi-lo.
+- `ATIVA`: tem senha; autentica; o e-mail passou a ser confiável (a ativação provou o controle da caixa) e só o próprio
+  usuário poderá alterá-lo.
+- `AGUARDANDO NOVA SENHA` (`password_hash` nulo, `activated_at` preenchido): a senha antiga foi revogada por uma
+  redefinição de administrador do sistema; não autentica até a pessoa definir outra. O e-mail continua travado.
+- `DESATIVADA` (`is_active` falso): não autentica; as sessões abertas caem na requisição seguinte; os dados são
+  preservados; não recebe convite nem recuperação.
 
-Isso exige que `password_hash` deixe de ser obrigatório para o estado pendente (migração) e novos campos, como `activated_at` e `is_active`.
-
----
+Invariantes no domínio **e** no banco: quem tem senha tem data de ativação; o **root sempre tem senha** e não pode ser
+desativado.
 
 ## 8. Senhas
 
-### 8.1 Hash (implementado, com evolução planejada)
+### 8.1 Hash (implementado)
 
-O hash fica atrás de `AbstractPasswordHasher` (`hash`, `verify`), implementada hoje por `WerkzeugPasswordHasher` (scrypt, aceito pelo OWASP). A recomendação atual do OWASP é **Argon2id**; a troca é planejada e se resume a **uma nova implementação da porta** (`argon2-cffi`), sem tocar no domínio nem nos serviços. Hashes antigos podem ser regravados no primeiro login, com `check_needs_rehash`.
+O hash fica atrás de `AbstractPasswordHasher` (`hash`, `verify`, `needs_rehash`, `dummy_hash`), implementada por
+`Argon2PasswordHasher` (`argon2-cffi`, **Argon2id**, a primeira recomendação do OWASP). Hashes antigos (scrypt/PBKDF2
+do Werkzeug) continuam sendo aceitos na conferência e são **regravados em Argon2id** no próximo login bem-sucedido.
+Um hash corrompido ou de método desconhecido vale como "senha que não confere": nunca vira erro 500 no login.
 
 ### 8.2 Política
 
@@ -368,204 +444,251 @@ O hash fica atrás de `AbstractPasswordHasher` (`hash`, `verify`), implementada 
 
 ---
 
-## 9. Ativação de conta e redefinição por token e código (planejado)
+## 9. Convites: ativação e redefinição por link e código (implementado)
 
-Decisão de projeto: o administrador **nunca define nem conhece** a senha de outra pessoa. O usuário a escolhe pelo próprio e-mail, e a prova exige **dois canais independentes**.
+Decisão de projeto: o administrador **nunca define nem conhece** a senha de outra pessoa. A pessoa a escolhe por um
+convite, e a prova exige **dois canais independentes**.
 
 ### 9.1 Fluxo de ativação
 
-1. O administrador cadastra o usuário (sem senha). O estado é `PENDENTE`.
-2. O sistema gera:
-   - um **token** de ativação, enviado por **e-mail** em um link;
-   - um **código** de ativação, **mostrado uma única vez** ao administrador, que o repassa por **outro canal**.
-3. O usuário abre o link, informa o **código** e define a senha (dois campos).
-4. Com token **e** código válidos, o sistema grava o hash, passa o usuário a `ATIVO` e invalida o convite.
+1. O administrador cadastra o usuário (sem senha). A conta nasce `PENDENTE`.
+2. O sistema gera um **token** (enviado por **e-mail**, num link) e um **código** (mostrado **uma única vez** ao
+   administrador, que o repassa por **outro canal**).
+3. A pessoa abre o link, informa o **código** e define a senha (dois campos).
+4. Com token **e** código válidos, o sistema grava o hash, ativa a conta, consome o convite e a pessoa entra com a nova
+   senha. Uma senha inválida (curta, confirmação diferente) **não gasta** tentativa do código nem o convite.
 
 ### 9.2 Requisitos do token e do código
 
-| Item | Requisito |
+| Item | Como é |
 |---|---|
-| Geração | `secrets` (imprevisível). O código tem formato legível e curto o bastante para ser ditado |
-| Armazenamento | **Só o hash** do código e do token, nunca o valor (Seção 9.4). O sistema "conhece" o código por poder compará-lo |
-| Validade | Limitada; expira |
-| Uso | **Único**; consumido na ativação |
-| Tentativas | Contador de erros do código; bloqueio após o limite; recuperável apenas com novo convite |
-| Reemissão | Reenviar gera **novo** token e **novo** código e invalida os anteriores |
-| Comparação | Tempo constante |
-| Registro | Nunca em log nem em URL de redirecionamento |
+| Token | `secrets.token_urlsafe(32)` (256 bits); só o **SHA-256** fica gravado |
+| Código | 8 caracteres de um alfabeto sem ambiguidade (sem 0/O, 1/I/L), exibido como `ABCD-EFGH`; só o **hash Argon2id** fica gravado; ao digitar, aceita minúsculas, espaços e hífen |
+| Validade | **24 horas** (ativação e redefinição de administrador); **15 minutos** (recuperação) |
+| Uso | **Único**, consumido por um `UPDATE` condicional atômico |
+| Tentativas | **5** códigos errados bloqueiam o convite (o contador é incrementado pelo banco e gravado mesmo na falha) |
+| Reemissão | Emitir um convite novo **revoga** o anterior; um só convite ativo por usuário |
+| Mensagem de erro | Sempre a mesma ("Convite ou código inválido, expirado ou já utilizado"), seja token inexistente, vencido, usado, revogado ou código errado |
+| Página do link | Não revela nada sobre o usuário (nome, e-mail, papel) |
+| Registro | Nunca em log (exceto o envio de desenvolvimento) nem em redirecionamento; o código não vai no e-mail |
 
-> A validade e o número máximo de tentativas do código ainda estão em aberto (Seção 18). Os convites ficam em uma **tabela** (Seção 9.4).
+### 9.3 Quem pode iniciar um convite
 
-### 9.3 Redefinição de senha por administrador
-
-Decidido: a redefinição usa o **mesmo mecanismo** da ativação (novo link e novo código), sem senha temporária definida pelo administrador. Efeito imediato: a senha anterior deixa de valer, as sessões abertas caem e o convite anterior, se houver, é revogado. Quem pode **disparar** o fluxo, conforme o papel do usuário-alvo:
-
-| Alvo | Quem pode disparar |
+| Alvo | Quem pode |
 |---|---|
-| `FAMILY_USER` | `FAMILY_ADMIN` da **mesma família** ou qualquer `SYSTEM_ADMIN` |
-| `FAMILY_ADMIN` | outro `FAMILY_ADMIN` da **mesma família** ou qualquer `SYSTEM_ADMIN` |
-| `SYSTEM_ADMIN` | **somente** outro `SYSTEM_ADMIN` (e o `ROOT`, como rede de segurança: proposta em aberto, Seção 18) |
+| Conta **pendente** de usuário de família ou administrador de família | `FAMILY_ADMIN` da **mesma família** ou qualquer `SYSTEM_ADMIN` |
+| Conta **pendente** de administrador do sistema | `SYSTEM_ADMIN` ou `ROOT` |
+| **Redefinição** de administrador do sistema já ativo | outro `SYSTEM_ADMIN` ou o `ROOT` (a senha antiga deixa de valer **na hora**) |
+| Usuário/administrador de família **já ativado** | **ninguém**: redefine a própria senha em "Esqueci minha senha" (recuperação autônoma) |
 | `ROOT` | ninguém pela aplicação; usa `flask reset-root-password` |
 
-Ninguém dispara o fluxo **para si mesmo**: para a própria senha existe a recuperação por e-mail (Seção 11.2). Cada disparo é registrado e avisa o usuário afetado por e-mail (Seção 15).
+Ninguém inicia um convite **para si mesmo**. O `ROOT` é, ele próprio, um administrador do sistema: por isso cadastra
+outros administradores do sistema e inicia a ativação e a redefinição de senha deles (decidido).
 
-### 9.4 Tabela de convites (decidido)
-
-Token e código vivem em uma **tabela**, não em tokens assinados sem estado. Com tabela é possível revogar na reemissão, contar tentativas erradas, garantir uso único de forma atômica e manter histórico; um token assinado sem estado só faria isso com artifícios.
-
-Modelagem proposta (`user_invitations`; nome e colunas a confirmar na implementação):
+### 9.4 Tabela `user_invitations`
 
 | Coluna | Função |
 |---|---|
-| `id` | identificador |
-| `user_id` | usuário-alvo (chave estrangeira, `ON DELETE CASCADE`) |
-| `purpose` | `ACTIVATION` ou `PASSWORD_RESET` |
-| `token_hash` | hash do token do link (SHA-256 basta: o token é aleatório e longo); índice único |
-| `code_hash` | hash do código, com a porta de hash lento (o código é curto, então o hash rápido não protege) |
-| `created_by_user_id`, `created_at` | quem emitiu e quando |
-| `expires_at` | validade |
-| `attempts` | tentativas erradas do código |
+| `id`, `user_id` | identificador e usuário-alvo (chave estrangeira, `ON DELETE CASCADE`) |
+| `purpose` | `ACTIVATION`, `ADMIN_RESET` ou `RECOVERY` |
+| `token_hash` | SHA-256 do token; índice único |
+| `code_hash` | hash do código; **nulo na recuperação** (`CHECK` por finalidade) |
+| `created_by_user_id`, `created_at` | quem emitiu (só informativo, sem chave estrangeira) e quando |
+| `expires_at`, `attempts` | validade e tentativas erradas |
 | `consumed_at`, `revoked_at` | uso único e revogação |
 
-Regras:
+Um **índice único parcial** garante no máximo um convite ativo (nem consumido, nem revogado) por usuário. Excluir o
+usuário apaga os convites dele (o serviço os remove antes de checar dependências, porque as chaves estrangeiras os
+contariam como dependência).
 
-- No máximo **um convite ativo por usuário**: índice único parcial sobre os convites não consumidos e não revogados. Emitir outro **revoga** o anterior.
-- O consumo é **atômico**: uma única instrução condicional (`UPDATE ... WHERE consumed_at IS NULL AND revoked_at IS NULL AND expires_at > agora AND attempts < limite`) evita corrida entre duas requisições.
-- O token chega na URL; localiza-se o convite pelo **hash** do token e o código é conferido em tempo constante.
-- Excluir o usuário apaga seus convites. Convites vencidos podem ser removidos em rotina de limpeza.
-- A migração segue o cuidado da Seção 7.2.
+### 9.5 Quando um convite deixa de valer
 
-### 9.5 Observação sobre o estado atual
+Ao vencer, ao ser usado, ao ser revogado por outro convite, ao exceder as tentativas, quando a conta é **desativada ou
+excluída** e quando o próprio usuário **troca a senha** (um link de recuperação enviado antes morre).
 
-Hoje o cadastro ainda coleta uma **senha temporária** em dois campos (e `must_change_password` obriga a troca). Isso será **removido** do cadastro quando o fluxo acima for implementado. O botão de mostrar/ocultar senha (`password_toggle.js`) e a regra de confirmação migram para a página de definição de senha.
-
----
-
-## 10. Autenticação e sessão (planejado)
+## 10. Autenticação e sessão (implementado)
 
 ### 10.1 Pilha
 
 | Necessidade | Biblioteca |
 |---|---|
-| Sessão e proteção de rotas | **Flask-Login** (o `User` de domínio **não** herda de `UserMixin`; um adaptador na camada web faz a ponte) |
+| Sessão e proteção de rotas | **Flask-Login** (o `User` de domínio **não** herda de `UserMixin`; `SessionUser`, na camada web, faz a ponte; **um** `LoginManager` por aplicação) |
 | CSRF | **Flask-WTF** (`CSRFProtect`) |
 | Limite de tentativas | **Flask-Limiter** |
-| Hash de senha | **argon2-cffi** (atrás da porta) |
-| Tokens assinados | **itsdangerous** (já vem com o Flask) |
+| Hash de senha | **argon2-cffi**, atrás da porta |
+| E-mail (formato) | **email-validator** (sem consulta de DNS) |
 
-Nada de código de segurança criptográfico próprio.
+Nada de código criptográfico próprio.
 
 ### 10.2 Login
 
-- Identificador: **nome de usuário ou e-mail** (ambos únicos, sem diferenciar caixa).
-- Erro **genérico** sempre ("Usuário ou senha inválidos"), sem distinguir usuário inexistente, senha errada, conta pendente ou desativada.
-- **Tempo de resposta equalizado**: quando o usuário não existe, calcula-se o hash de uma senha falsa para gastar o mesmo tempo.
-- Limite de tentativas por IP e por conta, com atraso progressivo (nunca bloqueio permanente, que permitiria negar serviço a terceiros).
-- Só autentica usuário `ATIVO`.
-- Ao autenticar, a sessão é **recriada** (`session.clear()` antes de gravar o usuário) para evitar fixação de sessão.
-- Parâmetro `next` do login **validado** (apenas caminhos relativos), para evitar redirecionamento aberto.
-- Logout por **POST** (com CSRF).
+- Identificador: **nome de usuário ou e-mail** (únicos, sem diferenciar caixa).
+- Erro **genérico** sempre ("Usuário ou senha inválidos"): usuário inexistente, senha errada, conta pendente,
+  desativada ou aguardando nova senha são indistinguíveis.
+- **Tempo equalizado**: sem usuário (ou sem senha), confere-se um hash falso, para o tempo não denunciar a conta.
+- Só autentica conta ativa **e** com senha.
+- Ao autenticar, a sessão é **recriada** (`session.clear()` antes de gravar o usuário): sem fixação de sessão.
+- O parâmetro `next` é **validado** (só caminhos relativos do próprio site; rejeita `//host`, `/\host`, esquemas,
+  quebras de linha), contra redirecionamento aberto.
+- Logout só por **POST** (com CSRF); `GET` devolve 405.
 
 ### 10.3 Sessão
 
-- Cookie de sessão **assinado** (não criptografado): não guardar dados sensíveis.
-- Configuração: `HttpOnly`, `SameSite=Lax` e `Secure` em produção.
-- O cookie guarda o **id do usuário mais uma impressão digital** derivada do hash da senha atual (HMAC com a `SECRET_KEY`). O usuário é **recarregado do banco a cada requisição**. Consequências: trocar a senha, desativar ou excluir o usuário derruba todas as sessões abertas, sem precisar de armazenamento de sessões.
-- Duração e expiração por inatividade: em aberto (Seção 18).
+- Cookie assinado (não criptografado), `HttpOnly`, `SameSite=Lax`, `Secure` (obrigatório em produção), com validade.
+- O cookie guarda `id:versão`, onde a versão é um **HMAC da senha atual** com a `SECRET_KEY`. O usuário é **recarregado do
+  banco a cada requisição**: trocar a senha, redefini-la, desativar ou excluir o usuário derruba as sessões abertas.
+- **Prazos decididos:** **30 minutos sem uso** (o cookie é renovado a cada requisição) e **8 horas absolutas** desde o
+  login (`login_at` na sessão, conferido a cada requisição; ausente ou inválido vale como expirado).
+- **Limitação conhecida:** como o estado vive no cookie assinado, o logout apaga o cookie do navegador, mas um cookie
+  **copiado antes** continua válido até expirar ou até a senha mudar / a conta ser desativada. Mitigações atuais: prazos
+  curtos, `HttpOnly`, HTTPS obrigatório em produção. Há um teste `xfail` (estrito) que registra essa limitação.
 
-### 10.4 CSRF
+### 10.4 Proteção de rotas: negar por padrão
 
-Todo POST exige token (`CSRFProtect`). Mutação de estado **nunca** ocorre em GET (convenção de rotas do projeto: `GET`+verbo para leitura, `POST`+verbo para mutação).
+Um `before_request` exige login em **toda** rota, exceto a lista explícita de rotas públicas (entrar, definir a senha
+pelo convite, recuperar a senha e os estáticos). Um teste percorre `app.url_map`, exige que cada rota fora da lista
+redirecione o visitante anônimo ao login e fixa a lista de públicas: uma rota nova sem proteção, ou uma pública nova
+sem decisão registrada, quebra a suíte. A área de **usuários** exige ainda um papel de administrador (usuário de
+família comum recebe 403).
 
----
+### 10.5 Limite de tentativas e CSRF
 
-## 11. E-mail do usuário (planejado, com regras já decididas)
+- **CSRF:** todo POST exige o token da sessão (formulários e `X-CSRFToken`); o teste percorre todos os POST.
+- **Limites (por minuto, salvo indicação):** login 5 por conta e 30 por endereço; recuperação 3 por hora por e-mail e 10
+  por hora por endereço; definir senha pelo convite 10 por endereço e 20 por hora por link; redefinir pela recuperação 10
+  por hora; trocar a própria senha 5 por usuário. A chave por conta ignora caixa e espaços.
+- O armazenamento é **em memória** (vale por processo). Com vários processos, usar Redis. Bloquear por conta permite que
+  alguém atrapalhe o login de outra pessoa por um minuto; é o preço de não bloquear definitivamente.
 
-O e-mail é a **chave-mestra** da conta, porque a recuperação o usa como "senha de reserva". Por isso é tratado como dado sensível.
+### 10.6 Cabeçalhos
+
+Em toda resposta: `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer` (os links
+de convite e recuperação trazem o token na URL) e, fora dos estáticos, `Cache-Control: no-store`. CSP e HSTS ficam para a
+fase de endurecimento (Flask-Talisman). O CSP estrito exigirá mover o script inline do menu lateral para um arquivo.
+
+### 10.7 Links por e-mail e o cabeçalho Host
+
+Os links usam `APP_BASE_URL` (obrigatória em produção, `https://`). Sem ela, só em desenvolvimento, usam o cabeçalho
+`Host` da requisição, que quem pede controla: um atacante poderia pedir a recuperação da senha de uma vítima com um `Host`
+forjado e fazer o e-mail legítimo apontar para o site dele. Há teste desse ataque.
+
+## 11. E-mail do usuário
+
+O e-mail é a **chave-mestra** da conta, porque a recuperação o usa como "senha de reserva". Por isso é tratado como dado
+sensível.
 
 ### 11.1 Regras
 
-1. **Cadastro:** o e-mail é informado em **dois campos** com verificação de igualdade **no serviço**; **colar é permitido**; antes de salvar, uma **janela de confirmação** mostra o endereço.
-2. **Normalização e validação:** biblioteca `email-validator` (não expressão regular própria); unicidade sem diferenciar caixa (já implementada). Decisão em aberto sobre caracteres Unicode parecidos (aceitar só ASCII ou confiar na normalização).
-3. **Antes da ativação**, o administrador (inclusive de família) pode **corrigir** o e-mail; o convite é reenviado ao novo endereço.
-4. **Depois da ativação**, só o **próprio usuário** altera o e-mail: senha atual, novo e-mail em dois campos, janela de confirmação; aviso ao endereço antigo; idealmente confirmação por link no endereço novo (depende de SMTP).
-5. **Recuperação de senha por e-mail só para conta `ATIVA`:** um e-mail de conta pendente é só o que o administrador digitou e pode estar errado.
-6. **`ROOT` fica fora da recuperação por e-mail** (usa o CLI) e nenhum administrador altera o e-mail do root.
-7. Os tokens de recuperação e de troca de e-mail são **presos ao e-mail e à senha atuais** (impressão digital de ambos): mudar qualquer um invalida links antigos.
+1. **Cadastro (implementado):** o e-mail é informado em **dois campos**, comparados **no serviço** (sem diferenciar caixa
+   nem espaços nas pontas); **colar é permitido**; antes de salvar, uma **janela de confirmação** mostra o endereço
+   (`<dialog>`, `email_confirm.js`; sem suporte do navegador, o formulário segue e o servidor valida do mesmo jeito).
+2. **Formato e normalização (implementado):** `email-validator` (não expressão regular própria), domínio em minúsculas,
+   unicidade sem diferenciar caixa. `+etiquetas` são mantidas como digitadas. Caracteres Unicode parecidos: decisão em
+   aberto (Seção 18).
+3. **Antes da ativação (implementado):** o administrador (inclusive de família) pode **corrigir** o e-mail.
+4. **Depois da ativação (implementado):** **nenhum administrador altera mais o e-mail**; a tela de edição o mostra como
+   somente leitura. Vale também para a conta aguardando nova senha.
+5. **Troca do próprio e-mail (planejada):** senha atual, novo e-mail em dois campos, janela de confirmação, aviso ao
+   endereço antigo e, com SMTP, confirmação por link no endereço novo.
+6. **Recuperação por e-mail (implementada):** só para conta **ativada, ativa e com senha**, de **usuário ou administrador
+   de família**. Um e-mail de conta pendente é só o que o administrador digitou e pode estar errado.
+7. **`ROOT` e administradores do sistema** ficam fora da recuperação por e-mail (o root usa o CLI; o administrador do
+   sistema, outro administrador).
 
-### 11.2 Recuperação de senha (planejada)
+### 11.2 Recuperação de senha
 
-Token assinado (`URLSafeTimedSerializer`, `salt` próprio), validade curta, uso único por construção, resposta **sempre igual** ao pedir a recuperação (sem confirmar se o e-mail existe), limite por IP **e por endereço de destino** (contra *e-mail bombing*), aviso por e-mail após a troca, senha escolhida é definitiva.
+Convite do tipo `RECOVERY` (Seção 9): link de uso único, **15 minutos**, sem código. A resposta ao pedido é **sempre a
+mesma** (existindo ou não conta elegível, inclusive para e-mails inválidos), com limite por endereço e por e-mail contra
+*e-mail bombing*. Concluída a recuperação, a pessoa recebe o aviso de senha alterada e as sessões antigas caem. A senha
+escolhida é definitiva.
 
----
+> **Canal lateral conhecido:** quando a conta é elegível o servidor envia um e-mail, o que leva mais tempo do que não
+> enviar. Com o SMTP real, o envio deve ir para uma fila/tarefa em segundo plano para igualar a resposta.
 
-## 12. Configuração de ambiente e proteção de rotas
+## 12. Configuração de ambiente e proteção de rotas (implementado)
 
-### 12.1 Segredos e configuração (implementado)
+### 12.1 Variáveis
 
-- `SECRET_KEY` é **obrigatória**: `create_app` falha se não estiver definida. Trocá-la derruba as sessões e invalida tokens assinados.
-- `.env` fica **fora do controle de versão**. Nunca registre valores de `.env` em log, issue ou commit.
+| Variável | Papel | Valor padrão |
+|---|---|---|
+| `SECRET_KEY` | assina o cookie de sessão e a versão da credencial; trocá-la derruba todas as sessões | **obrigatória** |
+| `APP_ENV` | `development` ou `production` | **obrigatória, sem padrão** |
+| `AUTH_ENABLED` | `true` ou `false` (só `false` em `development`) | **obrigatória, sem padrão** |
+| `DEV_AUTO_LOGIN_USERNAME` | usuário com o qual a aplicação autentica sozinha quando `AUTH_ENABLED=false` | obrigatória nesse caso |
+| `APP_BASE_URL` | endereço público para os links de e-mail (`https://...`) | obrigatória em produção |
+| `EMAIL_BACKEND` | `log` (desenvolvimento) ou `smtp` (ainda não implementado) | `log` |
+| `SESSION_COOKIE_SECURE` | cookie só por HTTPS | `false` (obrigatória `true` em produção) |
+| `FLASK_DEBUG` | depurador do Flask (não define "produção") | **`false`** |
+| `SQL_ECHO` | mostra todo o SQL no terminal (separado do `FLASK_DEBUG`: ligado junto, enterrava as mensagens dos comandos de CLI) | **`false`** |
 
-### 12.2 `AUTH_ENABLED` (decidido, planejado)
+`DATABASE_URI` continua obrigatória. Há um modelo comentado em `.env.example`.
 
-Variável de ambiente, lida por `Config`, que define se a proteção das rotas está ativa ao subir o servidor.
+### 12.2 Validação no startup (falha fechada)
 
-- **Sempre deve ser informada.** Sem valor padrão: se ausente, a aplicação **recusa subir** (falha fechada). Só pode valer `false` quando `APP_ENV=development` (Seção 12.3).
-- `true`: proteção ativa, funcionamento normal.
-- `false`: apenas para **desenvolvimento**. Em vez de ficar sem identidade, a aplicação **autentica sozinha como um usuário configurado** (`DEV_AUTO_LOGIN_USERNAME`), por meio de um `request_loader` do Flask-Login. A autenticação por senha é dispensada, mas as demais camadas continuam funcionando com um ator real.
-- **Não usar `LOGIN_DISABLED` do Flask-Login**: ele deixa `current_user` anônimo, e qualquer regra futura que dependa de papel ou família quebraria ou, pior, seria contornada.
-- O desvio vive em **um único ponto** (a configuração do gerenciador de login), não em `if` espalhados pelas rotas.
-- Com a proteção desligada: **aviso no log** na subida e **faixa visível em todas as telas**. Nunca pode ser desligada por URL, cabeçalho ou formulário.
-- Escolher **qual** usuário é o de desenvolvimento permite testar a tela como administrador do sistema, administrador de família ou usuário de família.
+`validate_security_config`, chamada uma única vez em `create_app`, junta **todos** os problemas e impede a subida:
+variável ausente ou inválida; `AUTH_ENABLED=false` fora de `development` ou sem `DEV_AUTO_LOGIN_USERNAME`; e, em
+`production`: `AUTH_ENABLED` diferente de `true`, `DEBUG` ligado, `SECRET_KEY` com menos de 32 caracteres, cookie sem
+`Secure`, `EMAIL_BACKEND` diferente de `smtp` ou `APP_BASE_URL` sem `https://`. Como o SMTP ainda não existe,
+**hoje a aplicação não sobe em produção**, de propósito.
 
-### 12.3 `APP_ENV` e a trava de produção (decidido, planejado)
+### 12.3 Proteção desligada em desenvolvimento
 
-O `DEBUG` do Flask **não** define "produção". `FLASK_ENV` foi removido a partir do Flask 2.3 e o Flask não tem, por si, noção de ambiente de produção. `DEBUG` só liga o depurador interativo e o recarregador, e deve estar desligado em produção porque o depurador permite executar código. Por isso o ambiente é declarado por uma variável **explícita** do projeto, `APP_ENV`:
-
-- Valores aceitos: `development` ou `production`. Qualquer outro valor, ou a ausência da variável, **impede a subida** (sem valor padrão, como `AUTH_ENABLED`).
-- `production`: só sobe se `AUTH_ENABLED=true`, `DEBUG` estiver desligado, a `SECRET_KEY` for forte (comprimento mínimo a fixar na implementação) e `SESSION_COOKIE_SECURE` estiver ativo. Se qualquer condição falhar, a aplicação **não sobe** e informa qual.
-- `development`: permite `AUTH_ENABLED=false` (Seção 12.2).
-- `DEBUG` continua sendo uma configuração própria, e deixa de ser o critério para decidir se algo é permitido ou não.
-
-A validação acontece **uma única vez**, na criação da aplicação (`create_app`), e as demais camadas apenas leem a configuração já validada.
-
-> Nota sobre o código atual: `Config.DEBUG` usa `os.getenv("FLASK_DEBUG", "True")`, ou seja, o padrão é **ligado** quando a variável não existe. Esse padrão deve ser invertido (desligado) quando a autenticação entrar.
+Com `AUTH_ENABLED=false`, a aplicação **autentica sozinha como o usuário configurado** (`request_loader`), em vez de ficar
+sem identidade. A autorização continua valendo, porque há um usuário de verdade por trás: configurar um administrador de
+família mostra a tela como ele a veria. Garantias: o cliente não escolhe o usuário (cabeçalhos, parâmetros e cookies são
+ignorados); sem o usuário (inexistente, desativado ou pendente) ninguém entra; o carregador é **por aplicação** e confere
+`AUTH_ENABLED` em tempo de execução, então um app seguro criado no mesmo processo nunca o herda; há **aviso no log** na
+subida e **faixa em todas as telas**. Não se usa `LOGIN_DISABLED` do Flask-Login (deixaria `current_user` anônimo).
 
 ### 12.4 Testes
 
-A proteção de rotas é testada **sempre com `AUTH_ENABLED=true`**, independentemente da configuração local do desenvolvedor.
+Os testes de CRUD usam `AUTH_ENABLED=false` com um usuário de desenvolvimento. Os testes de **segurança** (`tests/security`)
+sempre usam a proteção **ligada**.
 
----
+## 13. Comandos de CLI (implementado)
 
-## 13. Comandos de CLI
+Os três comandos rodam no servidor, por quem tem acesso a ele: é o único caminho para mexer no root, que está fora da
+recuperação por e-mail e do alcance dos administradores. Em comum: mensagens de erro em vermelho, sem traceback, dizendo o
+que fazer a seguir; valores que faltam são perguntados; um valor inválido ou em uso é explicado e perguntado de novo (se
+veio de uma opção, o comando termina com código 1, porque repetir não adiantaria).
 
-### 13.1 `flask create-root` (implementado)
+### 13.1 `flask create-root`
 
-- Opções interativas: nome de usuário, e-mail e senha (`hide_input`, com confirmação). Também aceita `--username`, `--email` e `--password`, mas o uso normal é o prompt (valores na linha de comando ficam no histórico do shell).
-- Cria o usuário `ROOT`, sem nome e sem família, com `must_change_password=True`.
-- Falha (sem traceback) se já existir um root, se username/e-mail já estiverem em uso ou se a senha for curta.
-- Serviço: `UserService.create_root`. O root **não** é criável nem excluível pelo CRUD (`root_cannot_be_created`, `root_cannot_be_deleted`).
+- **Antes de perguntar qualquer coisa**, recusa se já existe um root, citando-o e indicando `reset-root-password` e
+  `change-root-email`.
+- Pergunta (ou recebe por `--username`/`--email`) o nome de usuário e o e-mail e **confere na hora** se estão livres: o aviso
+  diz que o nome já está em uso, ou qual conta usa o e-mail. Só então pede a senha (`hide_input`, com confirmação; o serviço
+  confere a confirmação de novo).
+- Cria o `ROOT` **ativado**, sem nome e sem família, com a senha escolhida no terminal (não há senha temporária).
+- O root **não** é criável nem excluível pelo CRUD.
 
-### 13.2 `flask reset-root-password` (planejado)
+### 13.2 `flask reset-root-password`
 
-Redefine a senha do root. Mesma interação do `create-root`. É o **único** caminho de redefinição do root: o root está fora da recuperação por e-mail e fora do alcance dos demais administradores.
+Redefine a senha do root (nova senha com confirmação; senha curta é explicada e perguntada de novo). Derruba as sessões
+abertas do root. Se ainda não houver root, avisa e indica `flask create-root`, sem perguntar a senha.
 
----
+### 13.3 `flask change-root-email`
+
+Mostra o e-mail atual, pede o novo **duas vezes** (se a confirmação não confere, refaz os dois campos) e recusa endereço
+inválido, igual ao atual ou já cadastrado (sem revelar de quem). Não altera senha, nem sessões, nem as outras contas. É a
+única forma de trocar o e-mail do root: a trava de e-mail pós-ativação vale para a edição administrativa, não para a CLI.
 
 ## 14. Defesas nas demais camadas (implementado)
 
 | Ameaça | Defesa |
 |---|---|
 | XSS | Autoescape do Jinja; o realce de pesquisa escapa o texto antes de marcar (há testes de injeção de HTML) |
-| Injeção de SQL | Somente consultas parametrizadas (SQLAlchemy); curingas de `LIKE` (`%`, `_`, `\`) do termo de pesquisa são tratados como texto |
-| Mass assignment | DTOs com campos explícitos |
-| Vazamento de dados | `UserResponseDTO` sem `password_hash`; a listagem nunca renderiza hash nem senha (há teste) |
-| Segredo ausente | `SECRET_KEY` obrigatória no startup |
-| Eco de senha | Em erro de formulário, a senha digitada **não volta** para a página |
+| Injeção de SQL | Somente consultas parametrizadas (SQLAlchemy); curingas de `LIKE` (`%`, `_`, `\`) do termo de pesquisa são tratados como texto; o campo de ordenação é validado contra uma lista |
+| Mass assignment | DTOs com campos explícitos (a edição só recebe nome, usuário e e-mail; o cadastro ignora campos de senha) |
+| Vazamento de dados | `UserResponseDTO` e `SessionUserDTO` sem `password_hash`; a listagem nunca renderiza hash nem código |
+| Enumeração de contas | Erros genéricos, tempo equalizado, resposta única da recuperação, usuário de outra família = "não encontrado" |
+| Escalada de privilégio | Política de contas no domínio, aplicada no serviço; ator vem **da sessão**, nunca do formulário; administrador de família sem família é negado por inteiro |
+| CSRF, clickjacking, referer, cache | Seção 10 |
+| Segredo ausente ou fraco | Validação no startup (Seção 12.2) |
+| Eco de senha | Em erro de formulário, nenhuma senha volta para a página |
+| Hash legado corrompido | Vale como "não confere"; nunca erro 500 |
 
-Planejado: cabeçalhos de segurança (CSP, `X-Frame-Options` ou `frame-ancestors`, HSTS, `Referrer-Policy: no-referrer` nas páginas com token), por exemplo com Flask-Talisman.
-
----
+Planejado: CSP e HSTS (Flask-Talisman).
 
 ## 15. Auditoria e avisos (planejado)
 
@@ -582,41 +705,57 @@ Ações sensíveis feitas por administrador **avisam o usuário afetado por e-ma
 
 ## 16. Testes de segurança
 
-**Existentes:** invariantes de papel e família (domínio e `CHECK`); nome obrigatório por papel; unicidade global sem diferenciar caixa; hash com sal; confirmação de senha no serviço; `create-root` (inclusive recusa de segundo root e entrada inválida); proteção contra atribuição em massa; ausência de hash e senha nas respostas; escape de HTML nas listagens.
+A suíte de segurança vive em `tests/security` (pilha real: serviços, banco, Argon2 leve, Flask-Login, CSRF, limites e um
+servidor de e-mail falso para ler os links) e nos testes de domínio, de serviço e de infraestrutura.
 
-**Obrigatórios ao implementar a autenticação:**
+- **Negar por padrão:** percorre todas as rotas e confere o redirecionamento ao login; fixa a lista de rotas públicas.
+- **Login e sessão:** erro idêntico para toda falha; injeção; `next` malicioso (12 variações); fixação de sessão; cookie
+  adulterado, forjado ou de outra chave; marcas `HttpOnly`/`SameSite`/`Secure`; prazos de 30 min e 8 h (inclusive carimbo
+  ausente ou lixo); queda da sessão ao trocar a senha, desativar ou excluir; **`xfail` estrito** da limitação do logout.
+- **CSRF:** todos os POST sem token (anônimo e logado), token de outra sessão, lixo, formulários renderizados com token,
+  ataque forjado sem efeito.
+- **Limites:** login, recuperação, definição de senha e troca de senha; conta bloqueada recusa até a senha certa.
+- **Convites:** código errado em série e bloqueio, convite vencido/usado/revogado/trocado de finalidade, link de outra
+  pessoa, token e código isolados, mesma página para todo link morto, nada em texto puro no banco.
+- **Autorização:** matriz de papéis (domínio), tentativas de escalada, acesso cruzado entre famílias (404 idêntico ao de um
+  usuário inexistente), usuário comum na área de usuários, root intocável, administrador de família sem família.
+- **Recuperação:** resposta idêntica para qualquer tipo de conta, só família elegível, 15 minutos, uso único, sessões antigas
+  caem, link morre ao trocar a senha ou desativar.
+- **Links e Host:** envenenamento do cabeçalho `Host` com e sem `APP_BASE_URL`.
+- **Modo de desenvolvimento:** o cliente não escolhe o usuário; sem usuário ninguém entra; carregador não vaza para outro app.
+- **Configuração:** cada exigência de produção, uma por vez; o app recusa subir.
+- **Comandos de CLI** (`tests/e2e/test_root_cli.py`): recusa do segundo root antes de qualquer pergunta, perguntas de novo
+  para valor digitado inválido ou em uso, término com código 1 para valor vindo de opção, troca de senha e de e-mail,
+  eco de SQL independente do `FLASK_DEBUG` e mensagens que não nomeiam a conta dona de um nome ou e-mail.
+- **Infraestrutura:** `CHECK`s do banco, índice único parcial de convite ativo, consumo atômico, hasher (inclusive hash legado
+  e corrompido).
 
-- toda rota é **protegida ou pública declarada**: um teste percorre `app.url_map` e falha ao encontrar uma rota nova sem proteção, sempre com `AUTH_ENABLED=true`;
-- login: erro genérico, equalização de tempo, limite de tentativas, conta pendente e desativada não autenticam;
-- sessão cai quando a senha muda ou a conta é desativada;
-- ativação: token e código exigidos juntos, expiração, uso único, bloqueio por tentativas, reemissão invalida o anterior;
-- tokens presos a e-mail e senha;
-- CSRF rejeita POST sem token;
-- recuperação responde igual exista ou não o e-mail.
+**Ainda a escrever, quando o SMTP existir:** testes do remetente SMTP (entrega, falha, TLS, timeout) e a igualdade de tempo
+entre pedidos de recuperação elegíveis e inelegíveis.
 
----
+## 17. Autorização
 
-## 17. Autorização: fora do escopo desta versão
+**Implementada, para as contas:** `domain/identity/policy.py` (funções puras) decide quem cadastra, vê, edita, convida,
+desativa e exclui contas; o `UserService` a aplica a toda operação, recebendo o `Principal` da sessão; o repositório
+filtra a listagem pela família do administrador de família (escopo do tenant). A área de usuários exige um papel de
+administrador.
 
-A decisão de **quem pode fazer o quê** em cada operação (papéis, escopo por família, `Principal`, política, filtro de tenant nas consultas) **não está especificada nem implementada** nesta versão. As descrições de papéis na Parte I tratam apenas do ciclo de vida das contas (cadastrar, ativar, redefinir senha, desativar), que faz parte do fluxo de autenticação.
+**Fora do escopo desta versão:** a autorização das demais operações (membros, centros de custo, contas financeiras,
+transações...). Hoje essas telas exigem apenas **login**. Quando forem especificadas, partirão de que a Família é o tenant
+e de que toda consulta de dados financeiros deve ser escopada por `family_id` vindo da sessão, nunca de formulário.
 
-Quando a autorização for abordada, esta seção será substituída pela especificação, que parte de que **a Família é o tenant** e de que toda consulta de dados financeiros deve ser escopada por `family_id` vindo da sessão, nunca de formulário.
-
----
-
-## 18. Decisões em aberto
+## 18. Decisões em aberto e pendências
 
 | Tema | Situação |
 |---|---|
-| Provedor de e-mail (SMTP) | Em discussão. Em desenvolvimento, um envio que escreve no log pode bastar, atrás de uma porta `AbstractEmailSender` |
-| Tempos de sessão | Recomendação apresentada: 30 minutos de inatividade e 8 horas de duração absoluta, sem "lembrar de mim"; aguarda decisão |
-| Validade do convite e tentativas do código | Recomendação apresentada: 24 horas (12 horas é aceitável) e 5 tentativas; aguarda decisão |
-| O `ROOT` pode disparar a redefinição de um `SYSTEM_ADMIN` | Proposta: sim, como rede de segurança se o único administrador do sistema perder o acesso; aguarda confirmação |
-| Colar no segundo campo do e-mail na troca do **próprio** e-mail | Confirmado para o cadastro; a definir para a troca |
-| Caracteres Unicode parecidos em e-mails | A definir |
-| Confirmação final da pilha (Flask-Login, Flask-WTF, Flask-Limiter, Argon2id) | Proposta, aguarda confirmação |
-
----
+| **Provedor de e-mail (SMTP)** | Em discussão. Pendentes: `SmtpEmailSender`, seus testes, e o envio em segundo plano (canal lateral de tempo). Até lá, `EMAIL_BACKEND=log` só em desenvolvimento e produção não sobe |
+| Troca do **próprio** e-mail | Planejada; colar no segundo campo a definir |
+| Revogação de sessão copiada no logout | Limitação conhecida; exigiria estado no servidor (por exemplo, época de sessão por usuário) |
+| Armazenamento do limite de tentativas | Em memória; usar Redis com vários processos |
+| Caracteres Unicode parecidos em e-mails | A definir (só ASCII ou confiar na normalização) |
+| Auditoria e avisos por e-mail de ações administrativas | Planejados |
+| CSP e HSTS (Flask-Talisman) | Planejados (exige mover o script inline do menu) |
+| Usuário de família que perdeu o acesso ao próprio e-mail | Sem saída automática: hoje só excluir e recadastrar; a troca do próprio e-mail (acima) ajuda enquanto ele ainda entra |
 
 ## Regras para quem altera código de segurança (pessoa ou IA)
 
