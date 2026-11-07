@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 from typing import Optional
 from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError
@@ -36,7 +37,8 @@ class SQLAlchemyUserRepository(UserRepository):
             username=model.username,
             email=model.email,
             password_hash=model.password_hash,
-            must_change_password=model.must_change_password,
+            is_active=model.is_active,
+            activated_at=model.activated_at,
         )
 
     def _to_model(self, entity: User) -> UserModel:
@@ -48,7 +50,8 @@ class SQLAlchemyUserRepository(UserRepository):
             username=entity.username,
             email=entity.email,
             password_hash=entity.password_hash,
-            must_change_password=entity.must_change_password,
+            is_active=entity.is_active,
+            activated_at=entity.activated_at,
         )
 
     def save(self, user: User) -> None:
@@ -81,18 +84,24 @@ class SQLAlchemyUserRepository(UserRepository):
     def exists_with_role(self, role: Role) -> bool:
         return self.session.query(UserModel.id).filter(UserModel.role == role).first() is not None
 
+    def get_by_role(self, role: Role) -> Optional[User]:
+        model = self.session.query(UserModel).filter(UserModel.role == role).first()
+        return self._to_domain(model) if model else None
+
     def list_all(self) -> list[User]:
         return [self._to_domain(m) for m in self.session.query(UserModel).all()]
 
     def list_page(
         self, page: int, page_size: int, sort_by: str = "name", descending: bool = False,
-        search: Optional[str] = None,
+        search: Optional[str] = None, family_id: Optional[uuid.UUID] = None,
     ) -> Page[User]:
         if sort_by not in SORTABLE_FIELDS:
             raise ValueError(f"Campo de ordenação inválido: {sort_by!r}.")
         columns = {"name": UserModel.name, "username": UserModel.username, "email": UserModel.email}
         key = func.lower(columns[sort_by])
         query = self.session.query(UserModel)
+        if family_id is not None:
+            query = query.filter(UserModel.family_id == str(family_id))
         if search:
             query = query.filter(or_(*(_contains(columns[field], search) for field in SORTABLE_FIELDS)))
         # Empates (só possíveis no nome, que não é único) desempatam por nome de usuário e id.

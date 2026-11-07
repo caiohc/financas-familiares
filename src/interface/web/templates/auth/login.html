@@ -1,0 +1,37 @@
+{% extends "auth/base_auth.html" %}
+{% import "_forms.html" as forms %}
+
+{% block title %}Entrar{% endblock %}
+
+{% block content %}
+<div class="card card-narrow">
+    <h1 class="auth-title">Entrar</h1>
+
+    {% if error %}
+    <div class="alert alert-error" role="alert">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('auth.authenticate') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="next" value="{{ next }}">
+
+        <div class="form-group">
+            <label for="identifier" class="form-label">Usuário ou e-mail</label>
+            <input type="text" id="identifier" name="identifier" value="{{ identifier }}" required
+                autocomplete="username" autofocus class="form-control">
+        </div>
+
+        {{ forms.password_field('password', 'password', 'Senha', autocomplete='current-password') }}
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-success btn-lg">Entrar</button>
+        </div>
+    </form>
+
+    <p class="auth-links"><a href="{{ url_for('auth.forgot_password') }}">Esqueci minha senha</a></p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/password_toggle.js') }}"></script>
+{% endblock %}

@@ -1,10 +1,4 @@
 {% extends "base.html" %}
-{% import "_icons.html" as icons %}
-
-{% macro password_toggle(field_id) %}
-<button type="button" class="password-toggle" data-password-toggle="{{ field_id }}"
-    aria-label="Mostrar senha" aria-pressed="false">{{ icons.eye() }}{{ icons.eye_off() }}</button>
-{% endmacro %}
 
 {% block title %}{% if user %}Editar usuário{% else %}Novo usuário{% endif %}{% endblock %}
 
@@ -15,11 +9,20 @@
 </div>
 
 {% if error %}
-<div class="alert alert-error alert-narrow">{{ error }}</div>
+<div class="alert alert-error alert-narrow" role="alert">{{ error }}</div>
+{% endif %}
+
+{% if not user %}
+<div class="alert alert-info alert-narrow">
+    Você não define a senha: a pessoa recebe um link por e-mail e escolhe a própria senha. Ao salvar, mostraremos
+    um <strong>código</strong> para você repassar a ela por outro meio (pessoalmente, telefone ou mensagem).
+</div>
 {% endif %}
 
 <div class="card card-narrow">
-    <form method="POST" action="{{ form_action }}">
+    <form method="POST" action="{{ form_action }}"{% if not user %} data-email-confirm-form{% endif %}>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
         <div class="form-group">
             <label for="role" class="form-label">Papel</label>
             {% if user %}
@@ -42,6 +45,8 @@
             {% if user.family_id %}
             {% for f in families if f.id == user.family_id %}
             <div class="form-control form-control-static">{{ f|family_label }}</div>
+            {% else %}
+            <div class="form-control form-control-static">&mdash;</div>
             {% endfor %}
             {% else %}
             <div class="form-control form-control-static">&mdash; (nível de sistema)</div>
@@ -68,30 +73,28 @@
                 placeholder="Ex: joao.silva" required autocomplete="off" class="form-control">
         </div>
 
+        {% if user and not user.is_pending %}
+        <div class="form-group">
+            <label class="form-label">E-mail</label>
+            {# Depois da ativação, o e-mail é o canal de recuperação da senha: só o próprio usuário o altera. #}
+            <input type="hidden" name="email" value="{{ user.email }}">
+            <div class="form-control form-control-static">{{ user.email }}</div>
+            <p class="form-hint">A conta já foi ativada: o e-mail só pode ser alterado pelo próprio usuário.</p>
+        </div>
+        {% else %}
         <div class="form-group">
             <label for="email" class="form-label">E-mail</label>
             <input type="email" id="email" name="email" value="{{ values.email }}"
                 placeholder="Ex: joao@exemplo.com" required autocomplete="off" class="form-control">
         </div>
+        {% endif %}
 
         {% if not user %}
         <div class="form-group">
-            <label for="temporary_password" class="form-label">Senha temporária</label>
-            <div class="password-field">
-                <input type="password" id="temporary_password" name="temporary_password"
-                    required autocomplete="new-password" class="form-control">
-                {{ password_toggle('temporary_password') }}
-            </div>
-            <p class="form-hint">O usuário deverá trocá-la no primeiro acesso.</p>
-        </div>
-
-        <div class="form-group">
-            <label for="temporary_password_confirmation" class="form-label">Confirmar senha temporária</label>
-            <div class="password-field">
-                <input type="password" id="temporary_password_confirmation" name="temporary_password_confirmation"
-                    required autocomplete="new-password" class="form-control">
-                {{ password_toggle('temporary_password_confirmation') }}
-            </div>
+            <label for="email_confirmation" class="form-label">Confirmar e-mail</label>
+            <input type="email" id="email_confirmation" name="email_confirmation" value="{{ values.email_confirmation }}"
+                required autocomplete="off" class="form-control">
+            <p class="form-hint">Digite de novo (ou cole) o mesmo endereço: é para ele que o convite será enviado.</p>
         </div>
         {% endif %}
 
@@ -100,10 +103,23 @@
         </div>
     </form>
 </div>
+
+{% if not user %}
+<dialog id="email-confirm-dialog" class="confirm-dialog" aria-labelledby="email-confirm-title">
+    <h2 id="email-confirm-title" class="confirm-dialog-title">Confirmar o e-mail</h2>
+    <p>O convite será enviado para:</p>
+    <p class="confirm-dialog-address" id="email-confirm-address"></p>
+    <p class="form-hint">Um endereço errado leva o convite a outra pessoa. Confira antes de continuar.</p>
+    <div class="form-actions">
+        <button type="button" class="btn btn-ghost btn-lg" data-cancel>Corrigir</button>
+        <button type="button" class="btn btn-success btn-lg" data-confirm>Confirmar e salvar</button>
+    </div>
+</dialog>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}
 {% if not user %}
-<script src="{{ url_for('static', filename='js/password_toggle.js') }}"></script>
+<script src="{{ url_for('static', filename='js/email_confirm.js') }}"></script>
 {% endif %}
 {% endblock %}

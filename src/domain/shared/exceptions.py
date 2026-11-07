@@ -42,3 +42,18 @@ class EntityHasDependenciesError(ValueError):
         super().__init__(message)
         self.entity = entity
         self.entity_id = entity_id
+
+
+class AccessDeniedError(ValueError):
+    """O ator autenticado não tem permissão para a operação (HTTP 403)."""
+
+    def __init__(self, action: str, message: str):
+        super().__init__(message)
+        self.action = action
+
+
+class AuthenticationFailedError(ValueError):
+    """Credencial, convite ou link inválido. A mensagem é propositalmente genérica."""
+
+    def __init__(self, message: str):
+        super().__init__(message)

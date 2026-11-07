@@ -1,9 +1,10 @@
 from decimal import Decimal
-from datetime import date
-from sqlalchemy import String, Numeric, Boolean, Date, Enum, ForeignKey, Table, Column, Integer, Index, CheckConstraint, func
+from datetime import date, datetime
+from sqlalchemy import String, Numeric, Boolean, Date, Enum, ForeignKey, Table, Column, Integer, Index, CheckConstraint, DateTime, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
 from domain.financial.entities import TransactionType, AccountType
 from domain.identity.entities import Role
+from domain.identity.invitations import InvitationPurpose
 
 class Base(DeclarativeBase):
     pass
@@ -52,8 +53,11 @@ class UserModel(Base):
     name: Mapped[str | None] = mapped_column(String(255), nullable=True)
     username: Mapped[str] = mapped_column(String(255), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False)
-    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
-    must_change_password: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Nulo enquanto a pessoa não definiu a senha (conta pendente) ou após a redefinição administrativa.
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("1"))
+    # Nulo = nunca ativada (o e-mail ainda não é confiável).
+    activated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     __table_args__ = (
         # username e email são únicos globalmente (cada um por si, não composto), case-insensitive.
@@ -67,7 +71,41 @@ class UserModel(Base):
             name="ck_users_role_family",
         ),
         CheckConstraint("role = 'ROOT' OR (name IS NOT NULL AND trim(name) <> '')", name="ck_users_name_required"),
+        # Quem tem senha foi ativado; o root sempre tem senha.
+        CheckConstraint("password_hash IS NULL OR activated_at IS NOT NULL", name="ck_users_password_requires_activation"),
+        CheckConstraint("role <> 'ROOT' OR password_hash IS NOT NULL", name="ck_users_root_has_password"),
     )
+
+class UserInvitationModel(Base):
+    """Convites de ativação, redefinição e recuperação. Token e código só em hash."""
+    __tablename__ = "user_invitations"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    purpose: Mapped[InvitationPurpose] = mapped_column(Enum(InvitationPurpose), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    code_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Só informativo (quem emitiu). Não é chave estrangeira: apagar quem emitiu não pode ser barrado por isto.
+    created_by_user_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default=text("0"))
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    __table_args__ = (
+        Index("ux_user_invitations_token_hash", "token_hash", unique=True),
+        # No máximo um convite ativo (nem consumido nem revogado) por usuário.
+        Index(
+            "ux_user_invitations_one_active_per_user", "user_id", unique=True,
+            sqlite_where=text("consumed_at IS NULL AND revoked_at IS NULL"),
+        ),
+        # Convites de ativação e de redefinição exigem código; o de recuperação não tem.
+        CheckConstraint(
+            "(purpose = 'RECOVERY' AND code_hash IS NULL) OR (purpose <> 'RECOVERY' AND code_hash IS NOT NULL)",
+            name="ck_user_invitations_code_by_purpose",
+        ),
+    )
+
 
 class FamilyCostCenterModel(Base):
     __tablename__ = "family_cost_centers"

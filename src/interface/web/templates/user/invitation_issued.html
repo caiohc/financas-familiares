@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Convite emitido{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>{% if reissued %}Convite reenviado{% else %}Usuário cadastrado{% endif %}</h1>
+    <a href="{{ url_for('user.list_users') }}" class="btn btn-ghost">Voltar à listagem</a>
+</div>
+
+<div class="card card-narrow">
+    <p>
+        <strong>{{ issued.user.name or issued.user.username }}</strong>
+        ({{ issued.user.username }}) · {{ issued.user.role|role_label }}
+    </p>
+
+    {% if issued.email_sent %}
+    <div class="alert alert-success">O link para definir a senha foi enviado para <strong>{{ issued.user.email }}</strong>.</div>
+    {% else %}
+    <div class="alert alert-error" role="alert">
+        Não foi possível enviar o e-mail para <strong>{{ issued.user.email }}</strong>. O convite foi criado:
+        use <em>Reenviar convite</em> na listagem para tentar de novo (um novo código será gerado).
+    </div>
+    {% endif %}
+
+    <p class="form-label">Código de ativação</p>
+    <p class="invitation-code" id="invitation-code">{{ issued.code }}</p>
+
+    <div class="alert alert-info">
+        <strong>Anote agora:</strong> este código não será mostrado de novo. Repasse-o à pessoa <strong>por outro meio</strong>
+        (pessoalmente, telefone ou mensagem), nunca no mesmo e-mail do link. Ela precisa do link <em>e</em> do código.
+        O convite vale até {{ issued.expires_at.strftime('%d/%m/%Y %H:%M') }} (UTC) e só pode ser usado uma vez.
+    </div>
+</div>
+{% endblock %}

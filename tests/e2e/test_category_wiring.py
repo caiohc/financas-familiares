@@ -1,19 +1,10 @@
 import json
 
 import pytest
-from sqlalchemy import create_engine
-
-from app import create_app
-from infrastructure.database.models import Base
+from support import create_test_app
 
 def _app(tmp_path, **extra_config):
-    db_uri = f"sqlite:///{tmp_path / 'wiring_test.db'}"
-    setup_engine = create_engine(db_uri)
-    Base.metadata.create_all(setup_engine)
-    setup_engine.dispose()
-    return create_app({
-        "TESTING": True, "SQLALCHEMY_DATABASE_URI": db_uri, "SECRET_KEY": "wiring-test-secret", **extra_config,
-    })
+    return create_test_app(tmp_path, **extra_config)
 
 @pytest.fixture
 def app(tmp_path):

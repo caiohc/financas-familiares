@@ -1,10 +1,7 @@
 import re
 
 import pytest
-from sqlalchemy import create_engine
-
-from app import create_app
-from infrastructure.database.models import Base
+from support import create_test_app
 
 @pytest.fixture
 def app(tmp_path):
@@ -13,12 +10,7 @@ def app(tmp_path):
     só confirma que app.py conecta a fábrica e o blueprint de Member. Regras de
     negócio ficam nos unitários e nos de integração do repositório.
     """
-    db_uri = f"sqlite:///{tmp_path / 'wiring_test.db'}"
-    setup_engine = create_engine(db_uri)
-    Base.metadata.create_all(setup_engine)
-    setup_engine.dispose()
-
-    return create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": db_uri, "SECRET_KEY": "wiring-test-secret"})
+    return create_test_app(tmp_path)
 
 @pytest.fixture
 def client(app):

@@ -8,8 +8,9 @@ import pytest
 
 from application.dtos.family_dtos import FamilyCostCenterResponseDTO, FamilyResponseDTO, MemberResponseDTO
 from application.dtos.identity_dtos import UserResponseDTO
-from domain.identity.entities import Role
+from domain.identity.entities import AccountStatus, Role
 from fakes.pagination import page_of
+from support import assert_listing_call
 
 def _family(name: str = "Silva") -> FamilyResponseDTO:
     return FamilyResponseDTO(id=uuid.uuid4(), name=name, current_balance=Decimal("0.00"))
@@ -31,7 +32,7 @@ LISTINGS = [
         "/user/list", "user_service", "list_users_page",
         lambda n: UserResponseDTO(
             id=uuid.uuid4(), role=Role.FAMILY_USER, family_id=uuid.uuid4(), name=f"Pessoa {n}",
-            username=f"pessoa{n}", email=f"pessoa{n}@example.com", must_change_password=True,
+            username=f"pessoa{n}", email=f"pessoa{n}@example.com", status=AccountStatus.ACTIVE, is_active=True, is_pending=False,
         ),
     ),
 ]
@@ -64,14 +65,14 @@ def test_list_without_query_asks_the_service_for_its_defaults(client, listing):
 
     client.get(url)
 
-    paged_method.assert_called_once_with(page=None, page_size=None, sort_by=None, sort_dir=None, search=None)
+    assert_listing_call(paged_method, page=None, page_size=None, sort_by=None, sort_dir=None, search=None)
 
 def test_list_forwards_page_and_per_page_from_the_query_string(client, listing):
     url, paged_method, _ = listing
 
     client.get(f"{url}?page=3&per_page=25")
 
-    paged_method.assert_called_once_with(page=3, page_size=25, sort_by=None, sort_dir=None, search=None)
+    assert_listing_call(paged_method, page=3, page_size=25, sort_by=None, sort_dir=None, search=None)
 
 @pytest.mark.parametrize("query", ["page=abc&per_page=xyz", "page=&per_page=", "page=1.5"])
 def test_list_ignores_non_numeric_query_values(client, listing, query):
@@ -80,7 +81,7 @@ def test_list_ignores_non_numeric_query_values(client, listing, query):
     response = client.get(f"{url}?{query}")
 
     assert response.status_code == 200
-    paged_method.assert_called_once_with(page=None, page_size=None, sort_by=None, sort_dir=None, search=None)
+    assert_listing_call(paged_method, page=None, page_size=None, sort_by=None, sort_dir=None, search=None)
 
 def test_list_shows_where_the_user_is(client, listing):
     url, paged_method, make_item = listing

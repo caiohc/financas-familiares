@@ -9,8 +9,9 @@ import pytest
 
 from application.dtos.family_dtos import FamilyCostCenterResponseDTO, FamilyResponseDTO, MemberResponseDTO
 from application.dtos.identity_dtos import UserResponseDTO
-from domain.identity.entities import Role
+from domain.identity.entities import AccountStatus, Role
 from fakes.pagination import page_of
+from support import assert_listing_call
 
 def _family(name: str = "Família Silva") -> FamilyResponseDTO:
     return FamilyResponseDTO(id=uuid.uuid4(), name=name, current_balance=Decimal("0.00"))
@@ -24,7 +25,7 @@ def _cost_center(name: str = "Escola") -> FamilyCostCenterResponseDTO:
 def _user(name: str = "Ana") -> UserResponseDTO:
     return UserResponseDTO(
         id=uuid.uuid4(), role=Role.FAMILY_USER, family_id=uuid.uuid4(), name=name, username="ana",
-        email="ana@example.com", must_change_password=True,
+        email="ana@example.com", status=AccountStatus.ACTIVE, is_active=True, is_pending=False,
     )
 
 LISTINGS = [
@@ -67,7 +68,7 @@ def test_list_forwards_q_to_the_service(client, listing):
 
     client.get(f"{url}?q=silva&page=2&per_page=25&sort=name&dir=desc")
 
-    paged_method.assert_called_once_with(
+    assert_listing_call(paged_method, 
         page=2, page_size=25, sort_by="name", sort_dir="desc", search="silva"
     )
 

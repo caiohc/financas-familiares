@@ -1,0 +1,15 @@
+{% import "_icons.html" as icons %}
+{# Componentes de formulário compartilhados. Campo de senha: permite colar (gerenciadores de senha) e tem o botão
+   de olho (aberto / riscado) para mostrar ou ocultar o que foi digitado. O script password_toggle.js liga o botão. #}
+
+{% macro password_field(id, name, label, autocomplete="new-password", hint=None) %}
+<div class="form-group">
+    <label for="{{ id }}" class="form-label">{{ label }}</label>
+    <div class="password-field">
+        <input type="password" id="{{ id }}" name="{{ name }}" required autocomplete="{{ autocomplete }}" class="form-control">
+        <button type="button" class="password-toggle" data-password-toggle="{{ id }}"
+            aria-label="Mostrar senha" aria-pressed="false">{{ icons.eye() }}{{ icons.eye_off() }}</button>
+    </div>
+    {% if hint %}<p class="form-hint">{{ hint }}</p>{% endif %}
+</div>
+{% endmacro %}

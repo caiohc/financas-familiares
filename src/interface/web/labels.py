@@ -38,6 +38,18 @@ def role_label(role) -> str:
     return ROLE_LABELS[role.value]
 
 
+STATUS_LABELS = {
+    "PENDING": "Pendente de ativação",
+    "AWAITING_PASSWORD": "Aguardando nova senha",
+    "ACTIVE": "Ativo",
+    "DEACTIVATED": "Desativado",
+}
+
+
+def status_label(status) -> str:
+    return STATUS_LABELS[status.value]
+
+
 def highlight(text: Optional[str], term: Optional[str]) -> Markup:
     """Texto escapado com <mark> em cada trecho que casa com a pesquisa (sem caixa e sem acentos)."""
     text = "" if text is None else str(text)

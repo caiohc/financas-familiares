@@ -9,8 +9,9 @@ import pytest
 
 from application.dtos.family_dtos import FamilyCostCenterResponseDTO, FamilyResponseDTO, MemberResponseDTO
 from application.dtos.identity_dtos import UserResponseDTO
-from domain.identity.entities import Role
+from domain.identity.entities import AccountStatus, Role
 from fakes.pagination import page_of
+from support import assert_listing_call
 
 def _family(name: str = "Silva") -> FamilyResponseDTO:
     return FamilyResponseDTO(id=uuid.uuid4(), name=name, current_balance=Decimal("0.00"))
@@ -24,7 +25,7 @@ def _cost_center(n: int = 1) -> FamilyCostCenterResponseDTO:
 def _user(n: int = 1) -> UserResponseDTO:
     return UserResponseDTO(
         id=uuid.uuid4(), role=Role.FAMILY_USER, family_id=uuid.uuid4(), name=f"Pessoa {n}",
-        username=f"pessoa{n}", email=f"pessoa{n}@example.com", must_change_password=True,
+        username=f"pessoa{n}", email=f"pessoa{n}@example.com", status=AccountStatus.ACTIVE, is_active=True, is_pending=False,
     )
 
 # (url, serviço-double, método paginado, item, campos ordenáveis)
@@ -68,14 +69,14 @@ def test_list_forwards_sort_and_dir_from_the_query_string(client, listing):
 
     client.get(f"{url}?sort=name&dir=desc&page=2&per_page=25")
 
-    paged_method.assert_called_once_with(page=2, page_size=25, sort_by="name", sort_dir="desc", search=None)
+    assert_listing_call(paged_method, page=2, page_size=25, sort_by="name", sort_dir="desc", search=None)
 
 def test_list_without_sort_asks_the_service_for_its_defaults(client, listing):
     url, paged_method, _, _ = listing
 
     client.get(url)
 
-    paged_method.assert_called_once_with(page=None, page_size=None, sort_by=None, sort_dir=None, search=None)
+    assert_listing_call(paged_method, page=None, page_size=None, sort_by=None, sort_dir=None, search=None)
 
 def test_sortable_headers_exist_for_each_allowed_field(client, listing):
     url, paged_method, make_item, fields = listing

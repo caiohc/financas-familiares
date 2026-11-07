@@ -1,0 +1,11 @@
+{% extends "auth/base_auth.html" %}
+
+{% block title %}Verifique o seu e-mail{% endblock %}
+
+{% block content %}
+<div class="card card-narrow">
+    <h1 class="auth-title">Verifique o seu e-mail</h1>
+    <p>Se o e-mail estiver cadastrado, enviamos as instruções para redefinir a senha. O link vale por tempo limitado e só pode ser usado uma vez.</p>
+    <p class="auth-links"><a href="{{ url_for('auth.login') }}">Voltar para a tela de entrada</a></p>
+</div>
+{% endblock %}

@@ -14,6 +14,7 @@
 
 <div class="card card-narrow">
     <form method="POST" action="{{ form_action }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-group">
             <label for="name" class="form-label">Nome</label>
             <input type="text" id="name" name="name" value="{{ name or (category.name if category else '') }}"

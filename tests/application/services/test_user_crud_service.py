@@ -1,473 +1,602 @@
-"""CRUD de usuário cadastrado por um administrador (o usuário root é coberto em test_user_service.py)."""
+"""CRUD de usuário feito por um administrador: cadastro com convite, listagem, edição, situação e exclusão."""
 import uuid
+from datetime import timedelta
 
 import pytest
 
 from application.dtos.identity_dtos import CreateUserDTO, UpdateUserDTO
-from application.services.user_service import UserService
-from domain.family.entities import Family
-from domain.identity.entities import Role, User
+from domain.identity.entities import AccountStatus, Role
 from domain.identity.exceptions import user_has_dependencies
+from domain.identity.invitations import InvitationPurpose, normalize_code
 from domain.shared.exceptions import (
+    AccessDeniedError,
     DomainValidationError,
     EntityAlreadyExistsError,
     EntityHasDependenciesError,
     EntityNotFoundError,
 )
-from fakes.family_fakes import FakeUnitOfWork
-from fakes.identity_fakes import FakePasswordHasher
-
-
-@pytest.fixture
-def uow():
-    return FakeUnitOfWork()
-
-
-@pytest.fixture
-def service(uow):
-    return UserService(uow, FakePasswordHasher())
+from fakes.identity_builders import make_family, make_user, principal_of
+from fakes.identity_fakes import token_from_link
 
 
 @pytest.fixture
 def family(uow):
-    family = Family(name="Silva")
-    uow.families.save(family)
-    return family
+    return make_family(uow, "Silva")
 
 
-def _create_dto(**overrides) -> CreateUserDTO:
+@pytest.fixture
+def sysadmin(uow):
+    return make_user(uow, Role.SYSTEM_ADMIN, username="sysadmin")
+
+
+@pytest.fixture
+def actor(sysadmin):
+    return principal_of(sysadmin)
+
+
+def _dto(**overrides) -> CreateUserDTO:
     data = dict(
         role=Role.SYSTEM_ADMIN, family_id=None, name="Caio", username="caio", email="caio@example.com",
-        temporary_password="senha-temporaria",
+        email_confirmation="caio@example.com",
     )
-    # Por padrão a confirmação repete a senha, a menos que o teste a altere.
-    data["temporary_password_confirmation"] = overrides.get("temporary_password", data["temporary_password"])
     data.update(overrides)
     return CreateUserDTO(**data)
 
 
-def _saved(uow, **overrides) -> User:
-    data = dict(
-        role=Role.FAMILY_USER, family_id=uuid.uuid4(), name="Maria", username="maria", email="maria@example.com",
-        password_hash="h",
-    )
-    data.update(overrides)
-    user = User(**data)
-    uow.users.save(user)
-    return user
+# ---------------------------------------------------------------------------
+# Cadastro: conta pendente + convite (o administrador nunca define a senha)
+# ---------------------------------------------------------------------------
 
+def test_create_system_admin_leaves_a_pending_account_without_password(user_service, uow, actor):
+    issued = user_service.create_user(actor, _dto())
 
-def _saved_root(uow) -> User:
-    return _saved(uow, role=Role.ROOT, family_id=None, name=None, username="root", email="root@example.com")
-
-
-# --- Criação ---
-
-def test_create_system_admin(service: UserService, uow: FakeUnitOfWork):
-    response = service.create_user(_create_dto())
-
-    assert (response.role, response.family_id, response.name) == (Role.SYSTEM_ADMIN, None, "Caio")
-    assert response.must_change_password is True
-    assert uow.users.get_by_id(response.id).password_hash == FakePasswordHasher().hash("senha-temporaria")
+    assert (issued.user.role, issued.user.family_id, issued.user.name) == (Role.SYSTEM_ADMIN, None, "Caio")
+    assert issued.user.status is AccountStatus.PENDING
+    assert issued.user.is_pending is True
+    stored = uow.users.get_by_id(issued.user.id)
+    assert stored.password_hash is None and stored.activated_at is None
     assert uow.committed is True
 
 
 @pytest.mark.parametrize("role", [Role.FAMILY_ADMIN, Role.FAMILY_USER])
-def test_create_family_user_in_an_existing_family(service: UserService, uow: FakeUnitOfWork, family, role):
-    response = service.create_user(_create_dto(role=role, family_id=family.id))
+def test_create_family_user_in_an_existing_family(user_service, uow, actor, family, role):
+    issued = user_service.create_user(actor, _dto(role=role, family_id=family.id))
 
-    assert (response.role, response.family_id) == (role, family.id)
-    assert uow.users.get_by_id(response.id) is not None
+    assert (issued.user.role, issued.user.family_id) == (role, family.id)
+    assert uow.users.get_by_id(issued.user.id).is_pending
 
 
-def test_create_user_in_unknown_family_raises_not_found(service: UserService, uow: FakeUnitOfWork):
+def test_create_user_issues_an_activation_invitation_with_a_code(user_service, uow, hasher, actor, clock):
+    issued = user_service.create_user(actor, _dto())
+
+    invitation = uow.invitations.get_active_for_user(issued.user.id)
+    assert invitation.purpose is InvitationPurpose.ACTIVATION
+    assert invitation.created_by_user_id == actor.user_id
+    assert invitation.created_at == clock.now
+    assert invitation.expires_at == clock.now + timedelta(hours=24)
+    assert issued.expires_at == invitation.expires_at
+    # o banco guarda só o hash do código; o código em si só existe na resposta
+    assert hasher.verify(normalize_code(issued.code), invitation.code_hash)
+    assert invitation.code_hash != issued.code
+
+
+def test_the_code_is_shown_in_the_response_but_never_stored_or_emailed(user_service, uow, emails, actor):
+    issued = user_service.create_user(actor, _dto())
+
+    raw = normalize_code(issued.code)
+    assert len(raw) == 8
+    stored = uow.invitations.get_active_for_user(issued.user.id)
+    assert stored.code_hash not in (raw, issued.code)        # o que fica gravado é o hash, não o código
+    mail = emails.last
+    assert raw not in mail["body"] and issued.code not in mail["body"] and raw not in mail["subject"]
+
+
+def test_the_email_goes_to_the_informed_address_with_the_activation_link(user_service, emails, actor):
+    issued = user_service.create_user(actor, _dto())
+
+    assert issued.email_sent is True
+    assert emails.last["to"] == "caio@example.com"
+    assert "https://app.test/auth/activate/" in emails.last["body"]
+    assert "Caio" in emails.last["body"]
+
+
+def test_the_emailed_token_matches_the_stored_invitation(user_service, uow, emails, actor):
+    from domain.identity.invitations import hash_token
+
+    issued = user_service.create_user(actor, _dto())
+
+    token = token_from_link(emails.last["body"])
+    assert uow.invitations.get_by_token_hash(hash_token(token)).user_id == issued.user.id
+    assert uow.invitations.get_active_for_user(issued.user.id).token_hash == hash_token(token)
+
+
+def test_the_email_never_carries_a_password(user_service, emails, actor):
+    user_service.create_user(actor, _dto())
+
+    assert "senha:" not in emails.last["body"].lower()
+
+
+def test_create_user_keeps_the_account_when_the_email_cannot_be_sent(user_service, uow, emails, actor):
+    emails.fail = True
+
+    issued = user_service.create_user(actor, _dto())
+
+    assert issued.email_sent is False
+    assert uow.users.get_by_id(issued.user.id) is not None
+    assert uow.invitations.get_active_for_user(issued.user.id) is not None
+    assert issued.code            # o administrador ainda recebe o código e pode reenviar o convite
+
+
+def test_create_user_strips_username_and_normalizes_email(user_service, actor):
+    issued = user_service.create_user(
+        actor, _dto(username="  caio  ", email="  Caio@Example.COM ", email_confirmation="caio@example.com"),
+    )
+    assert (issued.user.username, issued.user.email) == ("caio", "Caio@example.com")
+
+
+def test_create_user_in_unknown_family_raises_not_found_and_saves_nothing(user_service, uow, actor):
+    users_before = len(uow.users.users)
     with pytest.raises(EntityNotFoundError):
-        service.create_user(_create_dto(role=Role.FAMILY_USER, family_id=uuid.uuid4()))
-
-    assert uow.users.users == {}
+        user_service.create_user(actor, _dto(role=Role.FAMILY_USER, family_id=uuid.uuid4()))
+    assert len(uow.users.users) == users_before
 
 
 @pytest.mark.parametrize("role", [Role.FAMILY_ADMIN, Role.FAMILY_USER])
-def test_create_family_user_without_family_raises_validation_error(service: UserService, role):
+def test_create_family_user_without_family_raises_validation_error(user_service, actor, role):
     with pytest.raises(DomainValidationError) as exc:
-        service.create_user(_create_dto(role=role, family_id=None))
-
+        user_service.create_user(actor, _dto(role=role, family_id=None))
     assert exc.value.field == "family_id"
 
 
-def test_create_system_admin_with_family_raises_validation_error(service: UserService, family):
+def test_create_system_admin_with_family_raises_validation_error(user_service, actor, family):
     with pytest.raises(DomainValidationError) as exc:
-        service.create_user(_create_dto(role=Role.SYSTEM_ADMIN, family_id=family.id))
-
+        user_service.create_user(actor, _dto(role=Role.SYSTEM_ADMIN, family_id=family.id))
     assert exc.value.field == "family_id"
 
 
-def test_create_user_cannot_create_a_root(service: UserService, uow: FakeUnitOfWork):
+def test_nobody_creates_a_root_through_the_application(user_service, uow, actor):
     with pytest.raises(DomainValidationError, match="create-root") as exc:
-        service.create_user(_create_dto(role=Role.ROOT))
-
+        user_service.create_user(actor, _dto(role=Role.ROOT))
     assert exc.value.field == "role"
-    assert uow.users.users == {}
 
 
-def test_create_user_requires_a_role(service: UserService):
+def test_create_user_requires_a_role(user_service, actor):
     with pytest.raises(DomainValidationError, match="Papel do usuário é obrigatório"):
-        service.create_user(_create_dto(role=None))
+        user_service.create_user(actor, _dto(role=None))
 
 
 @pytest.mark.parametrize("overrides, message", [
     ({"name": "  "}, "Nome é obrigatório"),
     ({"name": None}, "Nome é obrigatório"),
     ({"username": ""}, "Nome de usuário é obrigatório"),
-    ({"email": "  "}, "E-mail é obrigatório"),
-    ({"temporary_password": "curta"}, "pelo menos 8 caracteres"),
-    ({"temporary_password": None}, "Senha é obrigatória"),
+    ({"email": "  ", "email_confirmation": "  "}, "E-mail é obrigatório"),
+    ({"email": "invalido", "email_confirmation": "invalido"}, "e-mail válido"),
 ])
-def test_create_user_with_invalid_input_raises_and_saves_nothing(service, uow, overrides, message):
+def test_create_user_with_invalid_input_raises_and_saves_nothing(user_service, uow, emails, actor, overrides, message):
+    users_before = len(uow.users.users)
+
     with pytest.raises(DomainValidationError, match=message):
-        service.create_user(_create_dto(**overrides))
+        user_service.create_user(actor, _dto(**overrides))
 
-    assert uow.users.users == {}
-    assert uow.committed is False
+    assert len(uow.users.users) == users_before
+    assert uow.invitations.invitations == {}
+    assert emails.outbox == []
 
 
-@pytest.mark.parametrize("confirmation", ["outra-senha-123", "Senha-Temporaria", "senha-temporaria ", "", None])
-def test_create_user_with_mismatching_password_confirmation_raises_and_saves_nothing(
-    service: UserService, uow: FakeUnitOfWork, confirmation
+@pytest.mark.parametrize("confirmation", ["outro@example.com", "caio@example.co", "", None])
+def test_create_user_with_mismatching_email_confirmation_saves_nothing_and_sends_nothing(
+    user_service, uow, emails, actor, confirmation,
 ):
-    with pytest.raises(DomainValidationError, match="senhas informadas não conferem") as exc:
-        service.create_user(_create_dto(temporary_password_confirmation=confirmation))
+    users_before = len(uow.users.users)
 
-    assert exc.value.field == "password_confirmation"
-    assert uow.users.users == {}
-    assert uow.committed is False
+    with pytest.raises(DomainValidationError, match="e-mails informados não conferem") as exc:
+        user_service.create_user(actor, _dto(email_confirmation=confirmation))
 
-
-def test_create_user_with_matching_confirmation_hashes_the_password(service: UserService, uow: FakeUnitOfWork):
-    response = service.create_user(_create_dto(
-        temporary_password="  senha com espaços", temporary_password_confirmation="  senha com espaços",
-    ))
-
-    # A senha não é aparada antes do hash (espaços iniciais fazem parte dela).
-    assert uow.users.get_by_id(response.id).password_hash == FakePasswordHasher().hash("  senha com espaços")
+    assert exc.value.field == "email_confirmation"
+    assert len(uow.users.users) == users_before
+    assert uow.invitations.invitations == {} and emails.outbox == []
 
 
-def test_password_policy_is_checked_before_the_confirmation(service: UserService):
-    with pytest.raises(DomainValidationError, match="pelo menos 8 caracteres"):
-        service.create_user(_create_dto(temporary_password="curta", temporary_password_confirmation="outra"))
+def test_email_confirmation_ignores_case_and_edges(user_service, actor):
+    issued = user_service.create_user(actor, _dto(email="caio@example.com", email_confirmation="  CAIO@Example.com "))
+    assert issued.user.email == "caio@example.com"
 
 
-def test_create_user_with_duplicate_username_ignoring_case_raises(service: UserService, uow: FakeUnitOfWork):
-    _saved(uow, username="Caio", email="outro@example.com")
+def test_create_user_with_duplicate_username_ignoring_case_raises(user_service, uow, emails, actor):
+    make_user(uow, Role.FAMILY_USER, username="Caio", email="outro@example.com")
 
     with pytest.raises(EntityAlreadyExistsError) as exc:
-        service.create_user(_create_dto(username="caio"))
+        user_service.create_user(actor, _dto(username="caio"))
 
     assert exc.value.field == "username"
+    assert emails.outbox == []
 
 
-def test_create_user_with_duplicate_email_ignoring_case_raises(service: UserService, uow: FakeUnitOfWork):
-    _saved(uow, username="outro", email="CAIO@example.com")
+def test_create_user_with_duplicate_email_ignoring_case_raises(user_service, uow, emails, actor):
+    make_user(uow, Role.FAMILY_USER, username="outro", email="CAIO@example.com")
 
     with pytest.raises(EntityAlreadyExistsError) as exc:
-        service.create_user(_create_dto())
+        user_service.create_user(actor, _dto())
 
     assert exc.value.field == "email"
+    assert emails.outbox == []
 
 
-def test_username_is_unique_across_families(service: UserService, uow: FakeUnitOfWork, family):
-    _saved(uow, family_id=uuid.uuid4(), username="caio", email="outro@example.com")
+def test_username_is_unique_across_families(user_service, uow, actor, family):
+    make_user(uow, Role.FAMILY_USER, username="caio", email="outro@example.com")
 
     with pytest.raises(EntityAlreadyExistsError):
-        service.create_user(_create_dto(role=Role.FAMILY_USER, family_id=family.id))
+        user_service.create_user(actor, _dto(role=Role.FAMILY_USER, family_id=family.id))
 
 
-# --- Leitura ---
+# ---------------------------------------------------------------------------
+# Leitura e listagem
+# ---------------------------------------------------------------------------
 
-def test_get_user(service: UserService, uow: FakeUnitOfWork):
-    user = _saved(uow)
+def test_get_user(user_service, uow, actor):
+    user = make_user(uow, name="Maria", username="maria", email="maria@example.com")
 
-    response = service.get_user(user.id)
+    response = user_service.get_user(actor, user.id)
 
     assert (response.id, response.name, response.username, response.email) == (
         user.id, "Maria", "maria", "maria@example.com"
     )
 
 
-def test_get_user_not_found(service: UserService):
+def test_get_user_not_found(user_service, actor):
     with pytest.raises(EntityNotFoundError):
-        service.get_user(uuid.uuid4())
+        user_service.get_user(actor, uuid.uuid4())
 
 
-def test_user_response_never_exposes_the_password_hash(service: UserService, uow: FakeUnitOfWork):
-    user = _saved(uow)
+def test_user_response_never_exposes_the_password_hash(user_service, uow, actor):
+    user = make_user(uow)
 
-    assert not hasattr(service.get_user(user.id), "password_hash")
+    response = user_service.get_user(actor, user.id)
+
+    assert not hasattr(response, "password_hash")
+    assert user.password_hash not in repr(response)
 
 
-# --- Atualização ---
+# ---------------------------------------------------------------------------
+# Atualização
+# ---------------------------------------------------------------------------
 
-def test_update_user(service: UserService, uow: FakeUnitOfWork):
-    user = _saved(uow)
+def test_update_user(user_service, uow, actor):
+    user = make_user(uow, activated=False)
 
-    response = service.update_user(user.id, UpdateUserDTO(name="Maria Souza", username="msouza", email="m@example.com"))
+    response = user_service.update_user(
+        actor, user.id, UpdateUserDTO(name="Maria Souza", username="msouza", email="m@example.com"),
+    )
 
     assert (response.name, response.username, response.email) == ("Maria Souza", "msouza", "m@example.com")
     assert uow.committed is True
 
 
-def test_update_user_keeps_role_family_and_password(service: UserService, uow: FakeUnitOfWork):
-    user = _saved(uow, role=Role.FAMILY_ADMIN, must_change_password=False)
-    family_id = user.family_id
+def test_update_user_keeps_role_family_password_and_status(user_service, uow, actor):
+    user = make_user(uow, Role.FAMILY_ADMIN)
+    family_id, hashed = user.family_id, user.password_hash
 
-    service.update_user(user.id, UpdateUserDTO(name="Outra", username="outra", email="outra@example.com"))
+    user_service.update_user(actor, user.id, UpdateUserDTO(name="Outra", username="outra", email=user.email))
 
     stored = uow.users.get_by_id(user.id)
-    assert (stored.role, stored.family_id, stored.password_hash, stored.must_change_password) == (
-        Role.FAMILY_ADMIN, family_id, "h", False
+    assert (stored.role, stored.family_id, stored.password_hash, stored.status) == (
+        Role.FAMILY_ADMIN, family_id, hashed, AccountStatus.ACTIVE
     )
 
 
-def test_update_user_keeping_own_username_and_email_is_allowed(service: UserService, uow: FakeUnitOfWork):
-    user = _saved(uow)
+def test_update_user_keeping_own_username_and_email_is_allowed(user_service, uow, actor):
+    user = make_user(uow, username="maria", email="maria@example.com")
 
-    response = service.update_user(user.id, UpdateUserDTO(name="Novo", username="MARIA", email="Maria@Example.com"))
+    response = user_service.update_user(
+        actor, user.id, UpdateUserDTO(name="Novo", username="MARIA", email="Maria@Example.com"),
+    )
 
     assert response.name == "Novo"
 
 
-def test_update_user_to_another_users_username_raises(service: UserService, uow: FakeUnitOfWork):
-    _saved(uow, name="João", username="joao", email="joao@example.com")
-    other = _saved(uow)
+def test_update_user_to_another_users_username_raises(user_service, uow, actor):
+    make_user(uow, username="joao", email="joao@example.com")
+    other = make_user(uow, username="maria", email="maria@example.com")
 
     with pytest.raises(EntityAlreadyExistsError) as exc:
-        service.update_user(other.id, UpdateUserDTO(name="Maria", username="JOAO", email="maria@example.com"))
+        user_service.update_user(actor, other.id, UpdateUserDTO(name="Maria", username="JOAO", email=other.email))
 
     assert exc.value.field == "username"
 
 
-def test_update_user_to_another_users_email_raises(service: UserService, uow: FakeUnitOfWork):
-    _saved(uow, name="João", username="joao", email="joao@example.com")
-    other = _saved(uow)
+def test_update_pending_user_to_another_users_email_raises(user_service, uow, actor):
+    make_user(uow, username="joao", email="joao@example.com")
+    other = make_user(uow, username="maria", email="maria@example.com", activated=False)
 
     with pytest.raises(EntityAlreadyExistsError) as exc:
-        service.update_user(other.id, UpdateUserDTO(name="Maria", username="maria", email="JOAO@example.com"))
+        user_service.update_user(actor, other.id, UpdateUserDTO(name="Maria", username="maria", email="JOAO@example.com"))
 
     assert exc.value.field == "email"
 
 
-def test_update_user_with_blank_name_raises_and_keeps_current_data(service: UserService, uow: FakeUnitOfWork):
-    user = _saved(uow)
+def test_update_user_with_blank_name_raises_and_keeps_current_data(user_service, uow, actor):
+    user = make_user(uow, name="Maria", username="maria", email="maria@example.com")
 
     with pytest.raises(DomainValidationError, match="Nome é obrigatório"):
-        service.update_user(user.id, UpdateUserDTO(name="  ", username="outro", email="outro@example.com"))
+        user_service.update_user(actor, user.id, UpdateUserDTO(name="  ", username="outro", email=user.email))
 
     stored = uow.users.get_by_id(user.id)
-    assert (stored.name, stored.username, stored.email) == ("Maria", "maria", "maria@example.com")
+    assert (stored.name, stored.username) == ("Maria", "maria")
     assert uow.committed is False
 
 
-def test_update_root_allows_no_name(service: UserService, uow: FakeUnitOfWork):
-    root = _saved_root(uow)
-
-    response = service.update_user(root.id, UpdateUserDTO(name=None, username="root", email="novo@example.com"))
-
-    assert (response.name, response.email) == (None, "novo@example.com")
-
-
-def test_update_user_not_found(service: UserService):
+def test_update_user_not_found(user_service, actor):
     with pytest.raises(EntityNotFoundError):
-        service.update_user(uuid.uuid4(), UpdateUserDTO(name="X", username="x", email="x@example.com"))
+        user_service.update_user(actor, uuid.uuid4(), UpdateUserDTO(name="X", username="x", email="x@example.com"))
 
 
-# --- Exclusão ---
+# --- E-mail: trava depois da ativação (nenhum administrador o altera) ---
 
-def test_delete_user_success(service: UserService, uow: FakeUnitOfWork):
-    user = _saved(uow)
+def test_administrator_can_correct_the_email_before_activation(user_service, uow, actor):
+    user = make_user(uow, activated=False, email="errado@example.com")
 
-    service.delete_user(user.id)
+    response = user_service.update_user(actor, user.id, UpdateUserDTO(name=user.name, username=user.username, email="certo@example.com"))
+
+    assert response.email == "certo@example.com"
+
+
+@pytest.mark.parametrize("admin_role", [Role.SYSTEM_ADMIN, Role.FAMILY_ADMIN])
+def test_nobody_changes_the_email_of_an_activated_account(user_service, uow, family, admin_role):
+    admin = make_user(uow, admin_role, family=family if admin_role is Role.FAMILY_ADMIN else None)
+    target = make_user(uow, Role.FAMILY_USER, family=family, email="original@example.com")
+
+    with pytest.raises(DomainValidationError, match="depois que a conta foi ativada") as exc:
+        user_service.update_user(
+            principal_of(admin), target.id, UpdateUserDTO(name=target.name, username=target.username, email="invasor@example.com"),
+        )
+
+    assert exc.value.field == "email"
+    assert uow.users.get_by_id(target.id).email == "original@example.com"
+    assert uow.committed is False
+
+
+def test_the_email_lock_does_not_block_other_edits_of_an_activated_account(user_service, uow, actor):
+    target = make_user(uow, Role.FAMILY_USER, name="Antigo", email="original@example.com")
+
+    response = user_service.update_user(
+        actor, target.id, UpdateUserDTO(name="Novo Nome", username="novo.usuario", email="original@example.com"),
+    )
+
+    assert (response.name, response.username, response.email) == ("Novo Nome", "novo.usuario", "original@example.com")
+
+
+def test_email_lock_holds_while_the_account_awaits_a_new_password(user_service, uow):
+    admin_a = make_user(uow, Role.SYSTEM_ADMIN)
+    admin_b = make_user(uow, Role.SYSTEM_ADMIN, email="b@example.com")
+    user_service.issue_invitation(principal_of(admin_a), admin_b.id)       # revoga a senha de admin_b
+    assert uow.users.get_by_id(admin_b.id).status is AccountStatus.AWAITING_PASSWORD
+
+    with pytest.raises(DomainValidationError, match="depois que a conta foi ativada"):
+        user_service.update_user(
+            principal_of(admin_a), admin_b.id, UpdateUserDTO(name=admin_b.name, username=admin_b.username, email="roubo@example.com"),
+        )
+
+
+# ---------------------------------------------------------------------------
+# Desativar e reativar
+# ---------------------------------------------------------------------------
+
+def test_deactivate_and_reactivate_user(user_service, uow, actor):
+    user = make_user(uow)
+
+    deactivated = user_service.deactivate_user(actor, user.id)
+    assert (deactivated.is_active, deactivated.status) == (False, AccountStatus.DEACTIVATED)
+    assert uow.users.get_by_id(user.id).can_authenticate is False
+
+    reactivated = user_service.reactivate_user(actor, user.id)
+    assert (reactivated.is_active, reactivated.status) == (True, AccountStatus.ACTIVE)
+    assert uow.users.get_by_id(user.id).can_authenticate is True
+
+
+def test_deactivation_keeps_the_data(user_service, uow, actor):
+    user = make_user(uow, name="Maria", username="maria")
+    user_service.deactivate_user(actor, user.id)
+
+    stored = uow.users.get_by_id(user.id)
+    assert (stored.name, stored.username, stored.password_hash) == ("Maria", "maria", user.password_hash)
+
+
+def test_nobody_deactivates_their_own_account(user_service, sysadmin, actor):
+    with pytest.raises(DomainValidationError, match="não pode desativar a sua própria conta"):
+        user_service.deactivate_user(actor, sysadmin.id)
+    assert sysadmin.is_active is True
+
+
+def test_deactivation_of_a_missing_user_is_not_found(user_service, actor):
+    with pytest.raises(EntityNotFoundError):
+        user_service.deactivate_user(actor, uuid.uuid4())
+
+
+# ---------------------------------------------------------------------------
+# Convite: reenviar ativação e redefinir a senha de um administrador do sistema
+# ---------------------------------------------------------------------------
+
+def test_reissue_for_a_pending_account_sends_a_new_activation_and_revokes_the_old_link(
+    user_service, uow, emails, actor,
+):
+    first = user_service.create_user(actor, _dto(role=Role.FAMILY_USER, family_id=make_family(uow).id))
+    first_token = token_from_link(emails.last["body"])
+    first_invitation = uow.invitations.get_active_for_user(first.user.id)
+
+    second = user_service.issue_invitation(actor, first.user.id)
+
+    assert second.purpose is InvitationPurpose.ACTIVATION
+    assert second.code != first.code
+    assert first_invitation.revoked_at is not None                         # o convite antigo morreu
+    new_invitation = uow.invitations.get_active_for_user(first.user.id)
+    assert new_invitation.id != first_invitation.id
+    assert token_from_link(emails.last["body"]) != first_token
+    assert len([i for i in uow.invitations.invitations.values() if i.revoked_at is None and i.consumed_at is None]) == 1
+
+
+def test_reissue_reports_when_the_email_could_not_be_sent(user_service, uow, emails, actor):
+    pending = make_user(uow, activated=False)
+    emails.fail = True
+
+    issued = user_service.issue_invitation(actor, pending.id)
+
+    assert issued.email_sent is False
+    assert uow.invitations.get_active_for_user(pending.id) is not None
+
+
+def test_system_admin_resets_another_system_admins_password_with_link_and_code(user_service, uow, emails, actor):
+    peer = make_user(uow, Role.SYSTEM_ADMIN, username="peer")
+    old_hash = peer.password_hash
+
+    issued = user_service.issue_invitation(actor, peer.id)
+
+    assert issued.purpose is InvitationPurpose.ADMIN_RESET
+    stored = uow.users.get_by_id(peer.id)
+    assert stored.password_hash is None and stored.password_hash != old_hash     # a senha antiga já não vale
+    assert stored.status is AccountStatus.AWAITING_PASSWORD
+    assert stored.can_authenticate is False
+    assert uow.invitations.get_active_for_user(peer.id).requires_code is True
+    assert issued.code
+    assert "redefinição" in emails.last["subject"].lower()
+    assert normalize_code(issued.code) not in emails.last["body"]
+
+
+def test_root_can_reset_a_system_admins_password(user_service, uow):
+    root = make_user(uow, Role.ROOT, username="root")
+    admin = make_user(uow, Role.SYSTEM_ADMIN, username="admin")
+
+    issued = user_service.issue_invitation(principal_of(root), admin.id)
+
+    assert issued.purpose is InvitationPurpose.ADMIN_RESET
+
+
+def test_family_users_who_already_activated_reset_their_own_password(user_service, uow, family, actor):
+    """Decidido: usuário de família e administrador de família já ativados redefinem a senha sozinhos."""
+    for role in (Role.FAMILY_USER, Role.FAMILY_ADMIN):
+        target = make_user(uow, role, family=family)
+        with pytest.raises(DomainValidationError, match="redefinem a senha por conta própria"):
+            user_service.issue_invitation(actor, target.id)
+        assert uow.users.get_by_id(target.id).password_hash == target.password_hash       # nada foi revogado
+        assert uow.invitations.get_active_for_user(target.id) is None
+
+
+def test_family_admin_reissues_the_activation_of_a_pending_user_of_its_own_family(user_service, uow, family):
+    family_admin = make_user(uow, Role.FAMILY_ADMIN, family=family)
+    pending = make_user(uow, Role.FAMILY_USER, family=family, activated=False)
+
+    issued = user_service.issue_invitation(principal_of(family_admin), pending.id)
+
+    assert issued.purpose is InvitationPurpose.ACTIVATION
+
+
+def test_nobody_issues_an_invitation_for_themselves(user_service, sysadmin, actor):
+    with pytest.raises(AccessDeniedError):
+        user_service.issue_invitation(actor, sysadmin.id)
+
+
+def test_nobody_issues_an_invitation_for_a_deactivated_account(user_service, uow, actor):
+    target = make_user(uow, activated=False, active=False)
+    with pytest.raises(DomainValidationError, match="desativada"):
+        user_service.issue_invitation(actor, target.id)
+
+
+def test_issue_invitation_for_a_missing_user_is_not_found(user_service, actor):
+    with pytest.raises(EntityNotFoundError):
+        user_service.issue_invitation(actor, uuid.uuid4())
+
+
+def test_the_root_account_never_gets_an_invitation(user_service, uow, actor):
+    root = make_user(uow, Role.ROOT, username="root")
+    with pytest.raises(AccessDeniedError):
+        user_service.issue_invitation(actor, root.id)
+    assert uow.users.get_by_id(root.id).password_hash == root.password_hash
+
+
+# ---------------------------------------------------------------------------
+# Exclusão
+# ---------------------------------------------------------------------------
+
+def test_delete_user_success(user_service, uow, actor):
+    user = make_user(uow)
+
+    user_service.delete_user(actor, user.id)
 
     assert uow.users.get_by_id(user.id) is None
     assert uow.committed is True
 
 
-def test_delete_user_with_dependencies_raises_and_keeps_user(service: UserService, uow: FakeUnitOfWork):
-    user = _saved(uow)
+def test_delete_user_removes_its_invitations(user_service, uow, actor):
+    pending = make_user(uow, activated=False)
+    user_service.issue_invitation(actor, pending.id)
+    assert uow.invitations.get_active_for_user(pending.id) is not None
+
+    user_service.delete_user(actor, pending.id)
+
+    assert uow.invitations.get_active_for_user(pending.id) is None
+    assert all(i.user_id != pending.id for i in uow.invitations.invitations.values())
+
+
+def test_delete_user_with_dependencies_raises_and_keeps_user(user_service, uow, actor):
+    user = make_user(uow)
     uow.users.set_has_dependencies(True)
 
     with pytest.raises(EntityHasDependenciesError):
-        service.delete_user(user.id)
+        user_service.delete_user(actor, user.id)
 
     assert uow.users.get_by_id(user.id) is not None
 
 
-def test_delete_root_is_blocked(service: UserService, uow: FakeUnitOfWork):
-    root = _saved_root(uow)
+def test_delete_root_is_blocked_with_an_explanation(user_service, uow, actor):
+    root = make_user(uow, Role.ROOT, username="root")
 
     with pytest.raises(EntityHasDependenciesError, match="usuário root"):
-        service.delete_user(root.id)
+        user_service.delete_user(actor, root.id)
 
     assert uow.users.get_by_id(root.id) is not None
 
 
-def test_delete_user_not_found(service: UserService):
+def test_nobody_deletes_their_own_account(user_service, sysadmin, actor):
+    with pytest.raises(DomainValidationError, match="não pode excluir a sua própria conta"):
+        user_service.delete_user(actor, sysadmin.id)
+
+
+def test_delete_user_not_found(user_service, actor):
     with pytest.raises(EntityNotFoundError):
-        service.delete_user(uuid.uuid4())
+        user_service.delete_user(actor, uuid.uuid4())
 
 
-def test_preview_user_deletion_without_dependencies(service: UserService, uow: FakeUnitOfWork):
-    user = _saved(uow)
+def test_preview_user_deletion_without_dependencies(user_service, uow, actor):
+    user = make_user(uow, name="Maria")
 
-    preview = service.preview_user_deletion(user.id)
+    preview = user_service.preview_user_deletion(actor, user.id)
 
     assert (preview.name, preview.blocked_reason) == ("Maria", None)
 
 
-def test_preview_user_deletion_with_dependencies_gives_the_reason(service: UserService, uow: FakeUnitOfWork):
-    user = _saved(uow)
+def test_preview_user_deletion_with_dependencies_gives_the_reason(user_service, uow, actor):
+    user = make_user(uow)
     uow.users.set_has_dependencies(True)
 
-    preview = service.preview_user_deletion(user.id)
+    preview = user_service.preview_user_deletion(actor, user.id)
 
     assert preview.blocked_reason == str(user_has_dependencies(user.id))
 
 
-def test_preview_root_deletion_is_blocked_and_named_by_username(service: UserService, uow: FakeUnitOfWork):
-    root = _saved_root(uow)
+def test_preview_root_deletion_is_blocked_and_named_by_username(user_service, uow, actor):
+    root = make_user(uow, Role.ROOT, username="root")
 
-    preview = service.preview_user_deletion(root.id)
+    preview = user_service.preview_user_deletion(actor, root.id)
 
     assert preview.name == "root"
     assert "usuário root" in preview.blocked_reason
 
 
-def test_preview_user_deletion_not_found(service: UserService):
+def test_preview_of_own_account_explains_why_it_is_blocked(user_service, sysadmin, actor):
+    preview = user_service.preview_user_deletion(actor, sysadmin.id)
+    assert "própria conta" in preview.blocked_reason
+
+
+def test_preview_user_deletion_not_found(user_service, actor):
     with pytest.raises(EntityNotFoundError):
-        service.preview_user_deletion(uuid.uuid4())
+        user_service.preview_user_deletion(actor, uuid.uuid4())
 
-
-# --- Listagem: paginação, ordenação e pesquisa por nome, usuário e e-mail ---
-
-def _names(result):
-    return [item.name for item in result.items]
-
-
-def _seed_people(uow) -> None:
-    # Cada campo produz uma ordem diferente: nome (ana, Bruno, Zélia), usuário (Bruno, Zélia, ana),
-    # e-mail (Zélia, ana, Bruno).
-    _saved(uow, name="Zélia", username="bz.login", email="a.contato@mail.com")
-    _saved(uow, name="ana", username="cz.apelido", email="m.correio@mail.com")
-    _saved(uow, name="Bruno", username="az.nick", email="z.mensagem@mail.com")
-
-
-def test_list_defaults_to_name_ascending_ignoring_case(service: UserService, uow: FakeUnitOfWork):
-    _seed_people(uow)
-
-    result = service.list_users_page()
-
-    assert (result.sort_by, result.sort_dir) == ("name", "asc")
-    assert _names(result) == ["ana", "Bruno", "Zélia"]
-
-
-@pytest.mark.parametrize("field, ascending", [
-    ("name", ["ana", "Bruno", "Zélia"]),
-    ("username", ["Bruno", "Zélia", "ana"]),
-    ("email", ["Zélia", "ana", "Bruno"]),
-])
-def test_list_sorts_by_each_sortable_field_in_both_directions(service, uow, field, ascending):
-    _seed_people(uow)
-
-    up = service.list_users_page(sort_by=field, sort_dir="asc")
-    down = service.list_users_page(sort_by=field, sort_dir="desc")
-
-    assert (up.sort_by, up.sort_dir) == (field, "asc")
-    assert (down.sort_by, down.sort_dir) == (field, "desc")
-    assert _names(up) == ascending
-    assert _names(down) == ascending[::-1]
-
-
-@pytest.mark.parametrize("sort_by", ["role", "family", "password_hash", "", "NAME", None])
-def test_list_only_sorts_by_name_username_or_email(service: UserService, uow: FakeUnitOfWork, sort_by):
-    _seed_people(uow)
-
-    assert service.list_users_page(sort_by=sort_by).sort_by == "name"
-
-
-@pytest.mark.parametrize("sort_dir", ["up", "", "DESC", 1, None])
-def test_invalid_direction_falls_back_to_ascending(service: UserService, uow: FakeUnitOfWork, sort_dir):
-    _seed_people(uow)
-
-    result = service.list_users_page(sort_dir=sort_dir)
-
-    assert result.sort_dir == "asc"
-    assert _names(result) == ["ana", "Bruno", "Zélia"]
-
-
-def test_root_without_name_comes_first_when_sorting_by_name(service: UserService, uow: FakeUnitOfWork):
-    _seed_people(uow)
-    _saved_root(uow)
-
-    assert _names(service.list_users_page()) == [None, "ana", "Bruno", "Zélia"]
-
-
-def test_pagination_slices_the_sorted_listing(service: UserService, uow: FakeUnitOfWork):
-    for n in range(1, 16):
-        _saved(uow, name=f"Pessoa {n:02d}", username=f"pessoa{n:02d}", email=f"p{n:02d}@example.com")
-
-    second = service.list_users_page(page=2)
-
-    assert (second.page, second.total, second.total_pages) == (2, 15, 2)
-    assert _names(second) == [f"Pessoa {n:02d}" for n in range(11, 16)]
-
-
-def test_page_beyond_the_last_returns_the_last_page(service: UserService, uow: FakeUnitOfWork):
-    for n in range(1, 13):
-        _saved(uow, name=f"Pessoa {n:02d}", username=f"pessoa{n:02d}", email=f"p{n:02d}@example.com")
-
-    result = service.list_users_page(page=9)
-
-    assert result.page == 2
-    assert len(result.items) == 2
-
-
-@pytest.mark.parametrize("term, expected", [
-    ("zel", ["Zélia"]),                       # nome (sem acento e sem caixa)
-    ("APELIDO", ["ana"]),                     # nome de usuário
-    ("mensagem", ["Bruno"]),                  # e-mail
-    ("mail", ["ana", "Bruno", "Zélia"]),      # todos, pelo e-mail
-])
-def test_search_covers_name_username_and_email(service: UserService, uow: FakeUnitOfWork, term, expected):
-    _seed_people(uow)
-
-    result = service.list_users_page(search=term)
-
-    assert result.search == term
-    assert _names(result) == expected
-
-
-def test_search_does_not_look_at_other_fields(service: UserService, uow: FakeUnitOfWork):
-    _saved(uow, password_hash="segredo-hash")
-
-    assert service.list_users_page(search="segredo").total == 0
-    assert service.list_users_page(search="FAMILY_USER").total == 0
-
-
-def test_search_paginates_over_the_results_and_keeps_sorting(service: UserService, uow: FakeUnitOfWork):
-    for n in range(1, 13):
-        _saved(uow, name=f"Silva {n:02d}", username=f"silva{n:02d}", email=f"s{n:02d}@example.com")
-    for n in range(1, 30):
-        _saved(uow, name=f"Souza {n:02d}", username=f"souza{n:02d}", email=f"z{n:02d}@example.com")
-
-    second = service.list_users_page(page=2, sort_dir="desc", search="silva")
-
-    assert (second.total, second.total_pages) == (12, 2)
-    assert _names(second) == ["Silva 02", "Silva 01"]
-
-
-@pytest.mark.parametrize("raw", ["", "   ", None])
-def test_blank_search_means_no_filter(service: UserService, uow: FakeUnitOfWork, raw):
-    _seed_people(uow)
-
-    result = service.list_users_page(search=raw)
-
-    assert (result.search, result.total) == ("", 3)

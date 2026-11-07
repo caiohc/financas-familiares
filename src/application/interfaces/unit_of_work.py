@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Any
 from domain.family.repositories import FamilyRepository, FamilyCostCenterRepository, MemberRepository
 from domain.financial.repositories import CategoryRepository
-from domain.identity.repositories import UserRepository
+from domain.identity.repositories import InvitationRepository, UserRepository
 
 class AbstractUnitOfWork(ABC):
     """
@@ -14,6 +14,7 @@ class AbstractUnitOfWork(ABC):
     family_cost_centers: FamilyCostCenterRepository
     categories: CategoryRepository
     users: UserRepository
+    invitations: InvitationRepository
 
     def __enter__(self) -> 'AbstractUnitOfWork':
         return self

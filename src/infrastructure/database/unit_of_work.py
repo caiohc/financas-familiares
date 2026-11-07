@@ -6,6 +6,7 @@ from infrastructure.repositories.sqlalchemy.sqlalchemy_family_cost_center_reposi
 from infrastructure.repositories.sqlalchemy.sqlalchemy_member_repository import SQLAlchemyMemberRepository
 from infrastructure.repositories.sqlalchemy.sqlalchemy_category_repository import SQLAlchemyCategoryRepository
 from infrastructure.repositories.sqlalchemy.sqlalchemy_user_repository import SQLAlchemyUserRepository
+from infrastructure.repositories.sqlalchemy.sqlalchemy_invitation_repository import SQLAlchemyInvitationRepository
 
 class SQLAlchemyUnitOfWork(AbstractUnitOfWork):
     """
@@ -25,6 +26,7 @@ class SQLAlchemyUnitOfWork(AbstractUnitOfWork):
         self.categories = SQLAlchemyCategoryRepository(self.session)
         self.family_cost_centers = SQLAlchemyFamilyCostCenterRepository(self.session)
         self.users = SQLAlchemyUserRepository(self.session)
+        self.invitations = SQLAlchemyInvitationRepository(self.session)
 
         return super().__enter__()
 

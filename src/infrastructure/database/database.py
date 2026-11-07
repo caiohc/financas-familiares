@@ -16,7 +16,7 @@ def init_db(app):
     # 1. Cria o Engine a partir da URL fornecida (seja PostgreSQL ou SQLite)
     engine = create_engine(
         database_uri,
-        echo=app.config.get("DEBUG", False),
+        echo=app.config.get("SQL_ECHO", False),
         connect_args={"check_same_thread": False} if "sqlite" in database_uri else {}
     )
 

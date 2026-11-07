@@ -1,10 +1,7 @@
 import re
 
 import pytest
-from sqlalchemy import create_engine
-
-from app import create_app
-from infrastructure.database.models import Base
+from support import create_test_app
 
 @pytest.fixture
 def app(tmp_path):
@@ -18,17 +15,7 @@ def app(tmp_path):
     atributo errado, blueprint não registrado). Regra de negócio já está
     coberta nos unitários/integração; não repetir aqui.
     """
-    db_uri = f"sqlite:///{tmp_path / 'wiring_test.db'}"
-
-    setup_engine = create_engine(db_uri)
-    Base.metadata.create_all(setup_engine)
-    setup_engine.dispose()
-
-    app = create_app({
-        "TESTING": True,
-        "SQLALCHEMY_DATABASE_URI": db_uri,
-        "SECRET_KEY": "wiring-test-secret",
-    })
+    app = create_test_app(tmp_path)
     yield app
 
 @pytest.fixture

@@ -1,12 +1,15 @@
-"""Listagem (paginação, ordenação, pesquisa), exclusão e dependências do repositório de usuário."""
+"""Listagem (paginação, ordenação, pesquisa, escopo por família), exclusão e dependências do repositório de usuário."""
 import uuid
+from datetime import datetime, timedelta
 
 import pytest
 from sqlalchemy import Column, ForeignKey, String, Table
 from sqlalchemy.orm import Session
 
 from domain.identity.entities import Role, User
+from domain.identity.invitations import Invitation, InvitationPurpose
 from infrastructure.database.models import Base, FamilyModel
+from infrastructure.repositories.sqlalchemy.sqlalchemy_invitation_repository import SQLAlchemyInvitationRepository
 from infrastructure.repositories.sqlalchemy.sqlalchemy_user_repository import SQLAlchemyUserRepository
 
 
@@ -17,7 +20,11 @@ def repo(session: Session) -> SQLAlchemyUserRepository:
 
 @pytest.fixture
 def family_id(session: Session) -> uuid.UUID:
-    model = FamilyModel(id=str(uuid.uuid4()), name="Silva")
+    return _new_family(session, "Silva")
+
+
+def _new_family(session: Session, name: str) -> uuid.UUID:
+    model = FamilyModel(id=str(uuid.uuid4()), name=name)
     session.add(model)
     session.flush()
     return uuid.UUID(model.id)
@@ -70,7 +77,8 @@ def test_list_page_beyond_the_last_page_is_empty_but_keeps_the_total(repo, sessi
 
 
 def test_list_page_includes_users_of_every_level(repo, session, family_id):
-    _save(repo, session, None, None, "root", "root@example.com", role=Role.ROOT)
+    root = User(role=Role.ROOT, username="root", email="root@example.com", password_hash="hash")
+    repo.save(root)
     _save(repo, session, None, "Caio", "caio", "caio@example.com", role=Role.SYSTEM_ADMIN)
     _save(repo, session, family_id, "Ana", "ana", "ana@example.com", role=Role.FAMILY_ADMIN)
 
@@ -78,6 +86,50 @@ def test_list_page_includes_users_of_every_level(repo, session, family_id):
 
     assert page.total == 3
     assert {u.role for u in page.items} == {Role.ROOT, Role.SYSTEM_ADMIN, Role.FAMILY_ADMIN}
+
+
+# --- Escopo por família (tenant) ---
+
+def test_list_page_can_be_scoped_to_one_family(repo, session, family_id):
+    other = _new_family(session, "Souza")
+    _save(repo, session, family_id, "Ana", "ana", "ana@example.com")
+    _save(repo, session, family_id, "Bia", "bia", "bia@example.com")
+    _save(repo, session, other, "Caio", "caio", "caio@example.com")
+    _save(repo, session, None, "Dora", "dora", "dora@example.com", role=Role.SYSTEM_ADMIN)
+
+    page = repo.list_page(page=1, page_size=10, family_id=family_id)
+
+    assert _names(page) == ["Ana", "Bia"]
+    assert page.total == 2
+
+
+def test_the_family_scope_applies_before_search_and_pagination(repo, session, family_id):
+    other = _new_family(session, "Souza")
+    for n in range(1, 6):
+        _save(repo, session, family_id, f"Silva {n}", f"silva{n}", f"s{n}@example.com")
+    for n in range(1, 6):
+        _save(repo, session, other, f"Silva Outra {n}", f"silvao{n}", f"o{n}@example.com")
+
+    page = repo.list_page(page=2, page_size=2, search="silva", family_id=family_id)
+
+    assert page.total == 5
+    assert _names(page) == ["Silva 3", "Silva 4"]
+    assert repo.list_page(page=1, page_size=10, search="outra", family_id=family_id).total == 0
+
+
+def test_an_unknown_family_scope_lists_nobody(repo, session, family_id):
+    _save(repo, session, family_id, "Ana", "ana", "ana@example.com")
+
+    page = repo.list_page(page=1, page_size=10, family_id=uuid.uuid4())
+
+    assert page.items == [] and page.total == 0
+
+
+def test_without_a_family_scope_everyone_is_listed(repo, session, family_id):
+    _save(repo, session, family_id, "Ana", "ana", "ana@example.com")
+    _save(repo, session, _new_family(session, "Souza"), "Caio", "caio", "caio@example.com")
+
+    assert repo.list_page(page=1, page_size=10).total == 2
 
 
 # --- Ordenação ---
@@ -122,7 +174,8 @@ def test_list_page_ties_on_name_are_broken_by_username(repo, session, family_id)
 
 def test_list_page_puts_the_nameless_root_first_ascending_and_last_descending(repo, session, family_id):
     _seed_people(repo, session, family_id)
-    _save(repo, session, None, None, "root", "root@example.com", role=Role.ROOT)
+    repo.save(User(role=Role.ROOT, username="root", email="root@example.com", password_hash="hash"))
+    session.flush()
 
     assert _names(repo.list_page(page=1, page_size=10)) == [None, "ana", "Bruno", "Zélia"]
     assert _names(repo.list_page(page=1, page_size=10, descending=True)) == ["Zélia", "Bruno", "ana", None]
@@ -137,7 +190,7 @@ def test_list_page_sorted_still_reports_the_full_total(repo, session, family_id)
     assert _names(page) == ["Bruno"]
 
 
-@pytest.mark.parametrize("field", ["role", "family", "password_hash", "balance"])
+@pytest.mark.parametrize("field", ["role", "family", "password_hash", "balance", "is_active", "1; DROP TABLE users"])
 def test_list_page_rejects_an_unknown_sort_field(repo, field):
     with pytest.raises(ValueError):
         repo.list_page(page=1, page_size=10, sort_by=field)
@@ -161,6 +214,13 @@ def test_search_matches_name_username_or_email(repo, session, family_id, term, e
     assert page.total == len(expected)
 
 
+def test_search_never_looks_at_the_password_hash_or_the_role(repo, session, family_id):
+    _save(repo, session, family_id, "Ana", "ana", "ana@example.com")
+
+    assert repo.list_page(page=1, page_size=10, search="hash").total == 0
+    assert repo.list_page(page=1, page_size=10, search="FAMILY_USER").total == 0
+
+
 def test_search_ignores_case_and_accents(repo, session, family_id):
     _save(repo, session, family_id, "José", "jose", "jose@example.com")
     _save(repo, session, family_id, "Bruno", "bruno", "bruno@example.com")
@@ -169,8 +229,8 @@ def test_search_ignores_case_and_accents(repo, session, family_id):
     assert _names(repo.list_page(page=1, page_size=10, search="josé")) == ["José"]
 
 
-def test_search_does_not_match_the_nameless_root_by_name_but_finds_it_by_username(repo, session, family_id):
-    _save(repo, session, None, None, "root", "root@example.com", role=Role.ROOT)
+def test_search_finds_the_nameless_root_by_username(repo, session, family_id):
+    repo.save(User(role=Role.ROOT, username="root", email="root@example.com", password_hash="hash"))
     _save(repo, session, family_id, "Ana", "ana", "ana@example.com")
 
     assert repo.list_page(page=1, page_size=10, search="root").total == 1
@@ -186,8 +246,8 @@ def test_search_does_not_duplicate_a_user_matching_in_several_fields(repo, sessi
     assert len(page.items) == 1
 
 
-@pytest.mark.parametrize("term", ["%", "_", "\\"])
-def test_search_wildcards_are_literal(repo, session, family_id, term):
+@pytest.mark.parametrize("term", ["%", "_", "\\", "' OR '1'='1", "a%", "%a"])
+def test_search_wildcards_and_sql_are_literal(repo, session, family_id, term):
     _save(repo, session, family_id, "Ana", "ana", "ana@example.com")
 
     assert repo.list_page(page=1, page_size=10, search=term).total == 0
@@ -237,8 +297,7 @@ def test_user_without_dependents_has_no_dependencies(repo, session, family_id):
 
 
 def test_user_referenced_by_another_table_has_dependencies(repo, session, family_id):
-    # Nenhuma entidade referencia usuário ainda (auditoria virá depois). A checagem é derivada das FKs
-    # do modelo, então uma tabela futura passa a valer sozinha: simula-se uma com FK para users.
+    # A checagem é derivada das FKs do modelo: uma tabela futura com FK para users passa a valer sozinha.
     audit = Table(
         "tmp_user_audit_trail", Base.metadata,
         Column("id", String(36), primary_key=True),
@@ -255,3 +314,19 @@ def test_user_referenced_by_another_table_has_dependencies(repo, session, family
     finally:
         audit.drop(session.connection())
         Base.metadata.remove(audit)
+
+
+def test_invitations_count_as_dependencies_until_they_are_deleted_with_the_user(repo, session, family_id):
+    """Por isso `delete_user` apaga os convites antes de checar as dependências."""
+    user = _save(repo, session, family_id, "João", "joao", "joao@example.com")
+    invitations = SQLAlchemyInvitationRepository(session)
+    now = datetime(2026, 11, 8, 12, 0, 0)
+    invitations.save(Invitation(
+        user_id=user.id, purpose=InvitationPurpose.RECOVERY, token_hash="h" * 64, code_hash=None,
+        created_at=now, expires_at=now + timedelta(minutes=15),
+    ))
+    assert repo.has_dependencies(user.id) is True
+
+    invitations.delete_for_user(user.id)
+
+    assert repo.has_dependencies(user.id) is False

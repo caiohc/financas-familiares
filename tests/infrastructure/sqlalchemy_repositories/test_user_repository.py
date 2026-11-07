@@ -1,10 +1,11 @@
 import uuid
+from datetime import datetime
 
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from domain.identity.entities import Role, User
+from domain.identity.entities import AccountStatus, Role, User
 from domain.shared.exceptions import EntityAlreadyExistsError
 from infrastructure.database.models import Base, FamilyModel
 from infrastructure.repositories.sqlalchemy.sqlalchemy_user_repository import SQLAlchemyUserRepository
@@ -39,10 +40,36 @@ def _family_user(family_id, **overrides) -> User:
 
 
 def test_save_and_get_by_id_round_trips_every_attribute(repo, family_id):
-    user = _family_user(family_id, role=Role.FAMILY_ADMIN, must_change_password=False)
+    user = _family_user(family_id, role=Role.FAMILY_ADMIN, activated_at=datetime(2026, 3, 4, 5, 6, 7))
     repo.save(user)
 
     assert repo.get_by_id(user.id) == user
+
+
+def test_a_pending_account_round_trips_without_password_and_activation(repo, family_id):
+    pending = _family_user(family_id, password_hash=None)
+    repo.save(pending)
+
+    fetched = repo.get_by_id(pending.id)
+    assert (fetched.password_hash, fetched.activated_at, fetched.status) == (None, None, AccountStatus.PENDING)
+
+
+def test_an_account_awaiting_a_new_password_round_trips(repo):
+    admin = _admin()
+    admin.revoke_password()
+    repo.save(admin)
+
+    fetched = repo.get_by_id(admin.id)
+    assert fetched.password_hash is None and fetched.activated_at is not None
+    assert fetched.status is AccountStatus.AWAITING_PASSWORD
+
+
+def test_a_deactivated_account_round_trips(repo, family_id):
+    user = _family_user(family_id)
+    user.deactivate()
+    repo.save(user)
+
+    assert repo.get_by_id(user.id).is_active is False
 
 
 def test_system_admin_round_trips_without_family(repo):
@@ -68,8 +95,7 @@ def test_save_updates_an_existing_user(repo, family_id):
     user.change_password("novo-hash")
     repo.save(user)
 
-    fetched = repo.get_by_id(user.id)
-    assert (fetched.password_hash, fetched.must_change_password) == ("novo-hash", False)
+    assert repo.get_by_id(user.id).password_hash == "novo-hash"
 
 
 def test_get_by_id_unknown_returns_none(repo):
@@ -92,6 +118,14 @@ def test_get_by_username_ignores_case(repo, family_id):
     assert repo.get_by_username("maria") is None
 
 
+@pytest.mark.parametrize("probe", ["' OR '1'='1", "joao' --", "%", "_", "joa%", "j_ao"])
+def test_lookups_treat_wildcards_and_sql_as_plain_text(repo, family_id, probe):
+    repo.save(_family_user(family_id, username="joao", email="joao@example.com"))
+
+    assert repo.get_by_username(probe) is None
+    assert repo.get_by_email(probe) is None
+
+
 def test_exists_with_role(repo, family_id):
     assert repo.exists_with_role(Role.ROOT) is False
 
@@ -103,6 +137,15 @@ def test_exists_with_role(repo, family_id):
 
     repo.save(User(role=Role.ROOT, username="root", email="root@example.com", password_hash="hash"))
     assert repo.exists_with_role(Role.ROOT) is True
+
+
+def test_get_by_role(repo, family_id):
+    assert repo.get_by_role(Role.ROOT) is None
+    root = User(role=Role.ROOT, username="root", email="root@example.com", password_hash="hash")
+    repo.save(root)
+    repo.save(_admin())
+
+    assert repo.get_by_role(Role.ROOT).id == root.id
 
 
 @pytest.fixture

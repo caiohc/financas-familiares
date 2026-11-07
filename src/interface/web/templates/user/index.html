@@ -26,6 +26,7 @@
                 {{ pager.sortable_th(pagination, 'user.list_users', 'email', 'E-mail') }}
                 <th>Papel</th>
                 <th>Família</th>
+                <th>Situação</th>
                 <th class="col-actions">Ações</th>
             </tr>
         </thead>
@@ -37,16 +38,40 @@
                 <td>{{ u.email|highlight(pagination.search) }}</td>
                 <td class="cell-muted">{{ u.role|role_label }}</td>
                 <td class="cell-muted">{{ families_by_id.get(u.family_id)|highlight_label(None) }}</td>
+                <td><span class="status-badge status-{{ u.status.value|lower }}">{{ u.status|status_label }}</span></td>
+                {% set can = abilities[u.id] %}
                 <td>
                     <div class="row-actions">
+                        {% if can.edit %}
                         <a href="{{ url_for('user.edit', user_id=u.id) }}" class="btn btn-sm">{{ icons.edit() }} Editar</a>
+                        {% endif %}
+                        {% if can.invite %}
+                        <form method="POST" action="{{ url_for('user.reissue_invitation', user_id=u.id) }}" class="inline-form">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm">{{ can.invite_label }}</button>
+                        </form>
+                        {% endif %}
+                        {% if can.deactivate %}
+                        <form method="POST" action="{{ url_for('user.deactivate', user_id=u.id) }}" class="inline-form">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm">Desativar</button>
+                        </form>
+                        {% endif %}
+                        {% if can.reactivate %}
+                        <form method="POST" action="{{ url_for('user.reactivate', user_id=u.id) }}" class="inline-form">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-sm">Reativar</button>
+                        </form>
+                        {% endif %}
+                        {% if can.delete %}
                         <a href="{{ url_for('user.confirm_delete', user_id=u.id) }}" class="btn btn-sm btn-danger">{{ icons.trash() }} Excluir</a>
+                        {% endif %}
                     </div>
                 </td>
             </tr>
             {% else %}
             <tr>
-                <td colspan="6" class="empty-state">{% if pagination.search %}Nenhum resultado para "{{ pagination.search }}".{% else %}Nenhum usuário cadastrado ainda.{% endif %}</td>
+                <td colspan="7" class="empty-state">{% if pagination.search %}Nenhum resultado para "{{ pagination.search }}".{% else %}Nenhum usuário cadastrado ainda.{% endif %}</td>
             </tr>
             {% endfor %}
         </tbody>

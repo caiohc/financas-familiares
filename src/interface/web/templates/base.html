@@ -1,3 +1,4 @@
+{% import "_icons.html" as icons -%}
 <!DOCTYPE html>
 <html lang="pt-br">
 
@@ -8,7 +9,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 </head>
 
-<body>
+<body class="app-body">
     <!-- Previne o piscar da tela (FOUC) aplicando a classe antes de renderizar o DOM -->
     <script>
         if (localStorage.getItem('sidebarCollapsed') === 'true') {
@@ -16,6 +17,34 @@
         }
     </script>
 
+    {# Barra de status da autenticação, alinhada à direita: quem está logado, o menu da conta e o botão de sair. #}
+    {% if current_user.is_authenticated %}
+    <header class="auth-bar" aria-label="Sessão">
+        <div class="auth-bar-user">
+            <span class="auth-bar-dot" aria-hidden="true"></span>
+            <span class="auth-bar-text">
+                Conectado como <strong class="auth-bar-name">{{ current_user.display_name }}</strong>
+                <span class="auth-bar-role">{{ current_user.role|role_label }}</span>
+            </span>
+        </div>
+        {# Configurações da conta: ficam recolhidas; só abrem por escolha da pessoa. #}
+        <details class="account-menu">
+            <summary class="account-menu-trigger" aria-label="Configurações da conta">
+                {{ icons.gear() }}<span class="account-menu-label">Conta</span>
+            </summary>
+            <div class="account-menu-panel">
+                <p class="account-menu-title">Configurações da conta</p>
+                <a href="{{ url_for('auth.change_password') }}" class="account-menu-item">Alterar senha</a>
+            </div>
+        </details>
+        <form method="POST" action="{{ url_for('auth.logout') }}" class="auth-bar-logout">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm auth-bar-logout-button">Sair</button>
+        </form>
+    </header>
+    {% endif %}
+
+    <div class="app-shell">
     <!-- Painel de Gerenciamento à Esquerda -->
     <aside class="sidebar">
         <div class="sidebar-header">
@@ -72,6 +101,7 @@
                     <span>Membros</span>
                 </a>
             </li>
+            {% if can_manage_users %}
             <li>
                 <a href="{{ url_for('user.list_users') }}"{% if request.blueprint == 'user' %} class="active"{% endif %}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -82,6 +112,7 @@
                     <span>Usuários</span>
                 </a>
             </li>
+            {% endif %}
             <li>
                 <a href="{{ url_for('category.list_categories') }}"{% if request.blueprint == 'category' %} class="active"{% endif %}>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -131,10 +162,18 @@
                 </span>
             </li>
         </ul>
+
     </aside>
 
     <!-- Ponto Mágico onde o Jinja Re-renderiza o Centro -->
     <main class="main-content">
+        {% if not auth_enabled %}
+        <div class="alert alert-error dev-banner" role="alert">
+            Proteção de rotas DESLIGADA (AUTH_ENABLED=false): você está autenticado automaticamente como
+            <strong>{{ current_user.username if current_user.is_authenticated else 'ninguém' }}</strong>.
+            Use só em desenvolvimento.
+        </div>
+        {% endif %}
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
                 {% for category, message in messages %}
@@ -147,6 +186,7 @@
         {% block content %}
         {% endblock %}
     </main>
+    </div>
 
     <!-- Script para gerenciar o Toggle da Sidebar -->
     <script>
@@ -157,6 +197,9 @@
             localStorage.setItem('sidebarCollapsed', isCollapsed);
         });
     </script>
+    {% if current_user.is_authenticated %}
+    <script src="{{ url_for('static', filename='js/account_menu.js') }}"></script>
+    {% endif %}
     {% block scripts %}{% endblock %}
 </body>
 

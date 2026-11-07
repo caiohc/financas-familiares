@@ -33,7 +33,7 @@ config.set_main_option("sqlalchemy.url", Config.SQLALCHEMY_DATABASE_URI)
 # deve enxergar as tabelas cuja fatia já chegou na camada de infra; as demais
 # ficam de fora até a vez delas, mesmo já mapeadas em models.py. Ao concluir
 # a fatia de uma nova entidade, adicione suas tabelas aqui.
-TABLES_IN_SCOPE = {"families", "members", "family_cost_centers", "categories", "users"}
+TABLES_IN_SCOPE = {"families", "members", "family_cost_centers", "categories", "users", "user_invitations"}
 
 def include_object(object, name, type_, reflected, compare_to):
     if type_ == "table":
