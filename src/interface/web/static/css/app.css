@@ -7,6 +7,15 @@
     --panel-bg: #161b22;
     --glass-border: rgba(255, 255, 255, 0.08);
 
+    /* Fronteiras visíveis dos containers (cards, tabelas, barra lateral, campos).
+       Sólidas, para o contorno não depender do que está atrás.
+       --glass-border fica só para divisórias internas muito discretas. */
+    --border-surface: #3d444d;
+    --border-row: #2a313a;
+    --panel-header-bg: #212830;
+    --panel-header-text: #c9d1d9;
+    --panel-ring: 0 0 0 3px rgba(255, 255, 255, 0.03);
+
     /* Textos e Destaques */
     --text-primary: #e6edf3;
     --text-secondary: #8b949e;
@@ -45,7 +54,7 @@ body {
 .sidebar {
     width: 280px;
     background-color: var(--panel-bg);
-    border-right: 1px solid var(--glass-border);
+    border-right: 1px solid var(--border-surface);
     padding: 2rem 1.5rem;
     display: flex;
     flex-direction: column;
@@ -256,17 +265,17 @@ body.sidebar-is-collapsed .nav-links a span {
 /* Containers e Cards como vidro opaco */
 .card {
     background-color: var(--panel-bg);
-    border: 1px solid var(--glass-border);
+    border: 1px solid var(--border-surface);
     border-radius: 12px;
     padding: 2rem;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--panel-ring), 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
 /* Cards: variantes de largura/recorte */
 .card-narrow {
     max-width: 600px;
     margin: 0 auto;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    box-shadow: var(--panel-ring), 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
 .card-flush {
@@ -282,13 +291,13 @@ body.sidebar-is-collapsed .nav-links a span {
 }
 
 .data-table thead tr {
-    background-color: rgba(255, 255, 255, 0.05);
-    border-bottom: 1px solid var(--glass-border);
+    background-color: var(--panel-header-bg);
+    border-bottom: 1px solid var(--border-surface);
 }
 
 .data-table th {
     padding: 1rem 1.5rem;
-    color: var(--text-secondary);
+    color: var(--panel-header-text);
     font-weight: 500;
 }
 
@@ -297,7 +306,7 @@ body.sidebar-is-collapsed .nav-links a span {
 }
 
 .data-table tbody tr {
-    border-bottom: 1px solid var(--glass-border);
+    border-bottom: 1px solid var(--border-row);
     transition: background-color 0.2s;
 }
 
@@ -351,7 +360,7 @@ body.sidebar-is-collapsed .nav-links a span {
     width: 100%;
     padding: 1rem;
     border-radius: 8px;
-    border: 1px solid var(--glass-border);
+    border: 1px solid var(--border-surface);
     background-color: rgba(0, 0, 0, 0.3);
     color: var(--text-primary);
     font-size: 1.1rem;
@@ -388,7 +397,7 @@ select.form-control option {
     gap: 1rem;
     justify-content: flex-end;
     padding-top: 1rem;
-    border-top: 1px solid var(--glass-border);
+    border-top: 1px solid var(--border-row);
 }
 
 /* Página de confirmação de exclusão */
@@ -497,7 +506,7 @@ body.sidebar-is-collapsed .nav-soon span {
     justify-content: space-between;
     gap: 1rem;
     padding: 1rem 1.5rem;
-    border-top: 1px solid var(--glass-border);
+    border-top: 1px solid var(--border-surface);
     color: var(--text-secondary);
 }
 
@@ -511,7 +520,7 @@ body.sidebar-is-collapsed .nav-soon span {
 .pagination-size {
     padding: 0.25rem 0.75rem;
     border-radius: 6px;
-    border: 1px solid var(--glass-border);
+    border: 1px solid var(--border-surface);
     color: var(--text-primary);
     text-decoration: none;
 }
